@@ -68,6 +68,12 @@ description = 'Java library with optimized implementation of NumericalSurface fr
 
 
 publishing {
+    publications {
+        library(MavenPublication) {
+            from components.java
+        }
+    }
+
     repositories {
         maven {
             name = "GitHubPackages"
