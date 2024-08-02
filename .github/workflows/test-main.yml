@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        java-version: [ '17', '20', '21', '22' ]
+        java-version: [ '11', '17', '21', '22' ]
 
     steps:
     - uses: actions/checkout@v4
@@ -32,8 +32,8 @@ jobs:
         build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
         build-scan-terms-of-use-agree: "yes"
 
-#    - name: Validate Gradle wrapper
-#      uses: gradle/wrapper-validation-action@v3
+    - name: Validate Gradle wrapper
+      uses: gradle/wrapper-validation-action@v3
 
     - name: Check dependencies
       run: ./gradlew dependencies
