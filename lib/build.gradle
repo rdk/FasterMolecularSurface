@@ -70,6 +70,8 @@ description = 'Java library with optimized implementation of NumericalSurface fr
 publishing {
     publications {
         library(MavenPublication) {
+            artifactId = 'FasterMolecularSurface'
+
             from components.java
         }
     }
