@@ -32,8 +32,8 @@ jobs:
         build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
         build-scan-terms-of-use-agree: "yes"
 
-#    - name: Validate Gradle wrapper
-#      uses: gradle/wrapper-validation-action@v3
+    - name: Validate Gradle wrapper
+      uses: gradle/wrapper-validation-action@v3
 
     - name: Check dependencies
       run: ./gradlew dependencies
