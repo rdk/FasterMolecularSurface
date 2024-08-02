@@ -5,6 +5,8 @@
  * For more details on building Java & JVM projects, please refer to https://docs.gradle.org/8.9/userguide/building_java_projects.html in the Gradle documentation.
  */
 
+
+
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
@@ -19,13 +21,25 @@ dependencies {
     // Use JUnit Jupiter for testing.
     testImplementation libs.junit.jupiter
 
+    testImplementation 'org.openscience.cdk:cdk-pdb:2.9'          // for PDBReader class
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api libs.commons.math3
+    //api libs.commons.math3
 
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation libs.guava
+    //implementation libs.guava
+
+    implementation 'org.slf4j:slf4j-api:2.0.13'
+
+    //implementation 'org.agrona:agrona:1.21.2'
+    implementation 'com.carrotsearch:hppc:0.10.0'
+
+    implementation 'org.openscience.cdk:cdk-qsarmolecular:2.9'    // for NumericalSurface class
+    implementation 'org.openscience.cdk:cdk-silent:2.9'           // for Atom class
+
+
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -39,3 +53,13 @@ tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+jar {
+    archivesBaseName = 'FasterMolecularSurface'
+}
+
+
+group = 'cz.cuni.cusbg'
+version = '1.0'
+description = 'Java library with optimized implementation of NumericalSurface from CDK'
+

@@ -1,2 +1,5 @@
-# FasterMolecularSurface
-Java library with optimized implementation of NumericalSurfece from CDK
+
+# Introduction
+
+FasterMolecularSurface is a Java library with optimized implementation of NumericalSurface from CDK.
+
