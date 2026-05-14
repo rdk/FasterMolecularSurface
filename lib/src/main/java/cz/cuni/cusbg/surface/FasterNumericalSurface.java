@@ -34,6 +34,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.vecmath.Point3d;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -63,7 +68,76 @@ public class FasterNumericalSurface {
 
     private static ILoggingTool logger         = LoggingToolFactory.createLoggingTool(NumericalSurface.class);
     private static final Logger log = LoggerFactory.getLogger(FasterNumericalSurface.class);
-    
+
+    /**
+     * Fallback VdW radii indexed by element symbol.
+     *
+     * CDK's {@link org.openscience.cdk.config.Elements} enum hard-codes the VdW radius as {@code null}
+     * for several biologically common elements (Co, Ni, Cu, Rh, Os, Ir, several lanthanides),
+     * even though CDK ships the values in {@code radii-vdw.txt}. Calling
+     * {@link PeriodicTable#getVdwRadius(String)} on those returns {@code null} and any
+     * downstream {@code rw + solventRadius} arithmetic throws NPE.
+     *
+     * This table is populated from a copy of CDK's own {@code radii-vdw.txt} bundled as a
+     * resource, so the fallback values match CDK's data file exactly.
+     */
+    private static final Map<String, Double> VDW_FALLBACK_BY_SYMBOL = loadVdwFallbackTable();
+
+    /** Last-resort default when neither CDK enum nor radii-vdw.txt has a value. Matches the
+     * comment "Missing values are represented by 2 as a mean value" at the top of radii-vdw.txt. */
+    private static final double VDW_DEFAULT = 2.0;
+
+    private static Map<String, Double> loadVdwFallbackTable() {
+        Map<String, Double> map = new HashMap<>();
+        try (InputStream in = FasterNumericalSurface.class.getResourceAsStream("radii-vdw.txt")) {
+            if (in == null) {
+                log.warn("Bundled radii-vdw.txt not found on classpath; falling back to {} A default for unknown elements", VDW_DEFAULT);
+                return map;
+            }
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    String trimmed = line.trim();
+                    if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+                    String[] parts = trimmed.split("\\s+");
+                    if (parts.length < 2) continue;
+                    try {
+                        int z = Integer.parseInt(parts[0]);
+                        double rw = Double.parseDouble(parts[1]);
+                        String sym = PeriodicTable.getSymbol(z);
+                        if (sym != null && !sym.isEmpty()) {
+                            map.put(sym, rw);
+                        }
+                    } catch (NumberFormatException ignored) {
+                        // skip malformed lines
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to load bundled radii-vdw.txt: {}", e.toString());
+        }
+        return map;
+    }
+
+    /**
+     * Get the VdW radius for an atom with graceful fallback.
+     *
+     * Order of preference: CDK's {@link PeriodicTable#getVdwRadius} (enum-backed),
+     * then the bundled {@code radii-vdw.txt} table, then a 2.0 A default.
+     */
+    private static double getVdwRadius(IAtom atom) {
+        String symbol = atom.getSymbol();
+        Double r = PeriodicTable.getVdwRadius(symbol);
+        if (r != null) return r;
+        Double fallback = VDW_FALLBACK_BY_SYMBOL.get(symbol);
+        if (fallback != null) {
+            log.debug("CDK enum has no VdW radius for {} - using {} A from radii-vdw.txt", symbol, fallback);
+            return fallback;
+        }
+        log.warn("No VdW radius for element {} - using {} A default", symbol, VDW_DEFAULT);
+        return VDW_DEFAULT;
+    }
+
     double          solventRadius  = 1.4;
     int             tesslevel      = 4;
     IAtom[]         atoms;
@@ -131,7 +205,7 @@ public class FasterNumericalSurface {
         Point3d cp = new Point3d(0, 0, 0);
         double maxRadius = 0;
         for (IAtom atom : atoms) {
-            double vdwr = PeriodicTable.getVdwRadius(atom.getSymbol());
+            double vdwr = getVdwRadius(atom);
             if (vdwr + solventRadius > maxRadius)
                 maxRadius = vdwr + solventRadius;
 
@@ -265,7 +339,7 @@ public class FasterNumericalSurface {
     }
 
     private void translatePoints(int atmIdx, List<Point3d[]> points, int pointDensity, IAtom atom, Point3d cp) {
-        double totalRadius = PeriodicTable.getVdwRadius(atom.getSymbol()) + solventRadius;
+        double totalRadius = getVdwRadius(atom) + solventRadius;
 
         double area = 4 * Math.PI * (totalRadius * totalRadius) * points.size() / pointDensity;
 
@@ -311,7 +385,7 @@ public class FasterNumericalSurface {
     private List<Point3d[]> atomicSurfacePoints(NeighborList nbrlist, int currAtomIdx, IAtom atom, Point3d[] tessPoints,
                                                 List<Point3d[]> reusedPointList, PointDiffData[] reusedDataBuffer, IntArrayList neighbors) {
 
-        double totalRadius = PeriodicTable.getVdwRadius(atom.getSymbol()) + solventRadius;
+        double totalRadius = getVdwRadius(atom) + solventRadius;
         double totalRadius2 = totalRadius * totalRadius;
         double twiceTotalRadius = 2 * totalRadius;
 
@@ -337,7 +411,7 @@ public class FasterNumericalSurface {
             double z12 = neighborPoint.z - atomPoint.z;
 
             double d2 = x12 * x12 + y12 * y12 + z12 * z12;
-            double tmp = PeriodicTable.getVdwRadius(neighborAtom.getSymbol()) + solventRadius;
+            double tmp = getVdwRadius(neighborAtom) + solventRadius;
             tmp = tmp * tmp;
             double thresh = (d2 + totalRadius2 - tmp) / twiceTotalRadius;
 

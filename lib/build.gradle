@@ -61,7 +61,7 @@ jar {
 
 
 group = 'cz.cuni.cusbg'
-version = '1.0'
+version = '1.1'
 description = 'Java library with optimized implementation of NumericalSurface from CDK'
 
 
