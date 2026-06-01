@@ -64,7 +64,7 @@ import java.util.*;
  * @cdk.githash
  * @cdk.bug     1846421
  */
-public class FasterNumericalSurface {
+public class FasterNumericalSurface implements MolecularSurface {
 
     private static ILoggingTool logger         = LoggingToolFactory.createLoggingTool(NumericalSurface.class);
     private static final Logger log = LoggerFactory.getLogger(FasterNumericalSurface.class);
@@ -297,7 +297,7 @@ public class FasterNumericalSurface {
      * @throws CDKException if the atom index is outside the range of allowable indices
      */
     public Point3d[] getSurfacePoints(int atomIdx) throws CDKException {
-        if (atomIdx >= this.surfPoints.length)
+        if (atomIdx < 0 || atomIdx >= this.surfPoints.length)
             throw new CDKException("Atom index was out of bounds");
         return this.surfPoints[atomIdx].toArray(new Point3d[0]);
     }
@@ -311,7 +311,7 @@ public class FasterNumericalSurface {
      * @throws CDKException if the atom index is outside the range of allowable indices
      */
     public double getSurfaceArea(int atomIdx) throws CDKException {
-        if (atomIdx >= this.surfPoints.length)
+        if (atomIdx < 0 || atomIdx >= this.surfPoints.length)
             throw new CDKException("Atom index was out of bounds");
         return this.areas[atomIdx];
     }

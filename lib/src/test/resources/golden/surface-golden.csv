@@ -1,0 +1,13 @@
+# pdbId,atomCount,surfaceAtomCount,totalPoints,totalArea
+# golden baseline for FasterNumericalSurface at solventRadius=1.4, tessLevel=4
+# regenerate: ./gradlew test --tests '*GoldenValuesGenerator' -Dgolden.regenerate=true
+1CRN,327,222,98084,2969.835639
+4PTI,514,276,154539,4546.353076
+1VII,596,347,133760,3241.619573
+1UBQ,660,368,195770,5729.903472
+1AKI,1079,521,232602,6857.525017
+2LYZ,1102,573,270514,7927.015547
+1MBN,1260,774,268740,8104.837644
+3CI3,1842,905,382381,11284.96205
+1HHO,2396,1296,485071,14416.87578
+4HHB,4779,2268,804043,24032.86436

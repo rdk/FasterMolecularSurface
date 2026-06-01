@@ -53,6 +53,10 @@ java {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+    // Forward the golden-baseline regeneration flag to the test JVM when present.
+    if (System.getProperty('golden.regenerate') != null) {
+        systemProperty 'golden.regenerate', System.getProperty('golden.regenerate')
+    }
 }
 
 jar {
