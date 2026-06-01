@@ -143,7 +143,6 @@ public class FasterNumericalSurface implements MolecularSurface {
     IAtom[]         atoms;
     List<Point3d>[] surfPoints;
     double[]        areas;
-    double[]        volumes;
 
     /**
      * Constructor to initialize the surface calculation with default values.
@@ -201,21 +200,13 @@ public class FasterNumericalSurface implements MolecularSurface {
                 throw new IllegalArgumentException("One or more atoms had no 3D coordinate set");
         }
 
-        // get r_f and geometric center
-        Point3d cp = new Point3d(0, 0, 0);
+        // get r_f (largest expanded radius), needed to size the neighbor-list boxes
         double maxRadius = 0;
         for (IAtom atom : atoms) {
             double vdwr = getVdwRadius(atom);
             if (vdwr + solventRadius > maxRadius)
                 maxRadius = vdwr + solventRadius;
-
-            cp.x = cp.x + atom.getPoint3d().x;
-            cp.y = cp.y + atom.getPoint3d().y;
-            cp.z = cp.z + atom.getPoint3d().z;
         }
-        cp.x = cp.x / atoms.length;
-        cp.y = cp.y / atoms.length;
-        cp.z = cp.z / atoms.length;
 
         // do the tesselation
         Tessellate tess = new Tessellate("ico", tesslevel);
@@ -236,16 +227,15 @@ public class FasterNumericalSurface implements MolecularSurface {
         // loop over atoms and get surface points
         this.surfPoints = (List<Point3d>[]) new List[atoms.length];
         this.areas = new double[atoms.length];
-        this.volumes = new double[atoms.length];
 
-        List<Point3d[]> reusedPointList = new ArrayList<>(512);
+        List<Point3d> reusedPointList = new ArrayList<>(512);
         PointDiffData[] reusedDataBuffer = createEmptyDiffData(512);  // required length is the max number of neighbors of individual atoms
         IntArrayList neighborBuffer = new IntArrayList(32);
         int pointDensity = tess.getNumberOfTriangles() * 3;
-        
+
         for (int i = 0; i < atoms.length; i++) {
-            List<Point3d[]> points = atomicSurfacePoints(nbrlist, i, atoms[i], tessPoints, reusedPointList, reusedDataBuffer, neighborBuffer);
-            translatePoints(i, points, pointDensity, atoms[i], cp);
+            List<Point3d> points = atomicSurfacePoints(nbrlist, i, atoms[i], tessPoints, reusedPointList, reusedDataBuffer, neighborBuffer);
+            translatePoints(i, points, pointDensity, atoms[i]);
         }
         logger.info("Obtained points, areas and volumes");
 
@@ -338,33 +328,15 @@ public class FasterNumericalSurface implements MolecularSurface {
         return ta;
     }
 
-    private void translatePoints(int atmIdx, List<Point3d[]> points, int pointDensity, IAtom atom, Point3d cp) {
+    private void translatePoints(int atmIdx, List<Point3d> points, int pointDensity, IAtom atom) {
         double totalRadius = getVdwRadius(atom) + solventRadius;
 
         double area = 4 * Math.PI * (totalRadius * totalRadius) * points.size() / pointDensity;
 
-        double sumx = 0.0;
-        double sumy = 0.0;
-        double sumz = 0.0;
-        for (Point3d[] point : points) {
-            Point3d p = point[1];
-            sumx += p.x;
-            sumy += p.y;
-            sumz += p.z;
-        }
-        double vconst = 4.0 / 3.0 * Math.PI / (double) pointDensity;
-        double dotp1 = (atom.getPoint3d().x - cp.x) * sumx + (atom.getPoint3d().y - cp.y) * sumy
-                + (atom.getPoint3d().z - cp.z) * sumz;
-        double volume = vconst * (totalRadius * totalRadius) * dotp1 + (totalRadius * totalRadius * totalRadius)
-                * points.size();
-
         this.areas[atmIdx] = area;
-        this.volumes[atmIdx] = volume;
 
-        List<Point3d> surfPoints = new ArrayList<>(points.size());
-        for (Point3d[] point : points)
-            surfPoints.add(point[0]);
-        this.surfPoints[atmIdx] = surfPoints;
+        // copy out of the reused buffer into this atom's own list
+        this.surfPoints[atmIdx] = new ArrayList<>(points);
     }
 
     private static class PointDiffData {
@@ -382,8 +354,8 @@ public class FasterNumericalSurface implements MolecularSurface {
         return res;
     }
 
-    private List<Point3d[]> atomicSurfacePoints(NeighborList nbrlist, int currAtomIdx, IAtom atom, Point3d[] tessPoints,
-                                                List<Point3d[]> reusedPointList, PointDiffData[] reusedDataBuffer, IntArrayList neighbors) {
+    private List<Point3d> atomicSurfacePoints(NeighborList nbrlist, int currAtomIdx, IAtom atom, Point3d[] tessPoints,
+                                              List<Point3d> reusedPointList, PointDiffData[] reusedDataBuffer, IntArrayList neighbors) {
 
         double totalRadius = getVdwRadius(atom) + solventRadius;
         double totalRadius2 = totalRadius * totalRadius;
@@ -424,21 +396,20 @@ public class FasterNumericalSurface implements MolecularSurface {
 
         //Point3d[] tessPoints = tess.getTessAsPoint3ds();
 
-        List<Point3d[]> points = reusedPointList;
+        List<Point3d> points = reusedPointList;
         points.clear();
 
         collectPoints(tessPoints, numNeighbors, data, totalRadius, atomPoint, points);
 
-        // the first column contains the transformed points
-        // and the second column contains the points from the
-        // original unit tesselation
+        // points contains the accessible tesselation points transformed onto
+        // this atom's expanded sphere (scaled by totalRadius and translated to the atom centre)
         return points;
     }
 
     /**
      * takes most of the time
      */
-    private static void collectPoints(Point3d[] tessPoints, int numNeighbors, PointDiffData[] data, double totalRadius, Point3d atomPoint, List<Point3d[]> points) {
+    private static void collectPoints(Point3d[] tessPoints, int numNeighbors, PointDiffData[] data, double totalRadius, Point3d atomPoint, List<Point3d> points) {
         boolean buried;
         double px, py, pz;
 
@@ -456,11 +427,8 @@ public class FasterNumericalSurface implements MolecularSurface {
                 }
             }
             if (!buried) {
-                Point3d[] tmp = new Point3d[2];
-                tmp[0] = new Point3d(totalRadius * px + atomPoint.x, totalRadius * py
-                    + atomPoint.y, totalRadius * pz + atomPoint.z);
-                tmp[1] = pt;
-                points.add(tmp);
+                points.add(new Point3d(totalRadius * px + atomPoint.x, totalRadius * py
+                    + atomPoint.y, totalRadius * pz + atomPoint.z));
             }
         }
     }

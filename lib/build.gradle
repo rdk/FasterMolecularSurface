@@ -51,12 +51,29 @@ java {
 }
 
 tasks.named('test') {
-    // Use JUnit Platform for unit tests.
-    useJUnitPlatform()
+    // Use JUnit Platform for unit tests. Benchmarks are opt-in via the 'benchmark' task.
+    useJUnitPlatform {
+        excludeTags 'benchmark'
+    }
     // Forward the golden-baseline regeneration flag to the test JVM when present.
     if (System.getProperty('golden.regenerate') != null) {
         systemProperty 'golden.regenerate', System.getProperty('golden.regenerate')
     }
+}
+
+// Opt-in performance benchmark: ./gradlew benchmark
+tasks.register('benchmark', Test) {
+    description = 'Runs the @Tag("benchmark") performance harness for comparing surface variants.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'benchmark'
+    }
+    testLogging {
+        showStandardStreams = true
+    }
+    outputs.upToDateWhen { false }
 }
 
 jar {
