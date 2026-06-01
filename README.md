@@ -41,3 +41,35 @@ variant against CDK's reference over the same corpus:
 ```
 ./gradlew benchmark
 ```
+
+# Molecular volume (not implemented)
+
+CDK's `NumericalSurface` carried a `volumes[]` field that was computed but never exposed through a
+getter; `FasterNumericalSurface` inherited it. The computation was removed because it was dead
+(no accessor), had no oracle to validate against, and its dominant term was incorrectly normalized
+(missing the `vconst` factor — values were off by a factor of roughly `3·pointDensity/(4π)`).
+
+If a molecular-volume API is wanted later, implement it as follows. The volume enclosed by the
+solvent-accessible surface is obtained from the divergence theorem, `V = (1/3) ∮ (r · n) dA`,
+split into a per-atom contribution. For atom `i` with expanded radius `R = vdwRadius + solventRadius`,
+each accessible tessellation point represents a surface patch of area `dA = 4πR²/pointDensity` with
+outward normal `n = p` (the unit tessellation direction) at position `r = R·p + atomCenter − cp`,
+where `cp` is the molecule's geometric centre (the mean of all atom coordinates). This gives
+
+```
+vconst = (4/3)·π / pointDensity
+dotp1  = (atomCenter − cp) · Σp           // Σp = sum of the unit tessellation directions of accessible points
+V_i    = vconst·R³·nPoints + vconst·R²·dotp1
+```
+
+and the total volume is `Σ V_i`. Note **both** terms carry `vconst` (this is the bug to avoid).
+Implementation steps:
+
+1. Restore the geometric-centre pass in `init()` (mean of atom coordinates → `cp`).
+2. Keep the unit tessellation direction alongside each accepted point in `collectPoints` (the
+   removed code stored it as the second element of a `Point3d[2]`); accumulate `Σp` per atom.
+3. Compute `V_i` per atom with the formula above; expose `getTotalVolume()` /
+   `getAllSurfaceVolumes()` (and add them to the `MolecularSurface` interface so variants share them).
+4. Validate with an isolated atom: `cp == atomCenter` ⇒ `dotp1 = 0`, so `V` reduces to
+   `vconst·R³·nPoints ≈ (4/3)·π·R³`, the analytic sphere volume (within tessellation tolerance).
+   Add the result to the golden baseline once it checks out.
