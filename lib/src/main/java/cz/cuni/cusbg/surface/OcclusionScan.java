@@ -51,4 +51,36 @@ interface OcclusionScan {
             }
         }
     };
+
+    /**
+     * Same buried predicate as {@link #STANDARD}, with a last-occluder-first hint: the neighbor that
+     * buried the previous tessellation point is tested first for the next one. Consecutive tessellation
+     * points are spatially coherent, so that neighbor usually buries the next point too, exiting after a
+     * single comparison; on a miss it falls back to the full in-order scan (which still tests the hinted
+     * neighbor, so the result is unchanged). The hint is one {@code int} local per atom, reset on entry,
+     * so the scan is stateless across atoms. See {@link HintedGridSoaNumericalSurface}.
+     */
+    OcclusionScan LAST_OCCLUDER_FIRST = (tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
+                                         totalRadius, atomX, atomY, atomZ, points) -> {
+        int last = -1;   // neighbor that buried the previous point, or -1 (per-atom local; reset here)
+        for (int t = 0; t < numTess; t++) {
+            double px = tx[t], py = ty[t], pz = tz[t];
+
+            if (last >= 0 && diffX[last] * px + diffY[last] * py + diffZ[last] * pz > thresh[last]) {
+                continue;   // buried by the cached occluder, last unchanged
+            }
+
+            boolean buried = false;
+            for (int k = 0; k < numNeighbors; k++) {
+                if (diffX[k] * px + diffY[k] * py + diffZ[k] * pz > thresh[k]) {
+                    last = k;   // remember this occluder for the next point
+                    buried = true;
+                    break;
+                }
+            }
+            if (!buried) {
+                points.add(new Point3d(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ));
+            }
+        }
+    };
 }

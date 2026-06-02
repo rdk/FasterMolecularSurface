@@ -30,6 +30,17 @@ class GridSoaEquivalenceTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("structures")
     void gridNeighborSetsMatchNeighborList(TestStructures.Structure s) {
+        assertSetsMatchNeighborList(s, (atoms, ax, ay, az, r) -> new CellGridNeighborList(ax, ay, az, r));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structures")
+    void symmetricGridNeighborSetsMatchNeighborList(TestStructures.Structure s) {
+        assertSetsMatchNeighborList(s, (atoms, ax, ay, az, r) -> new SymmetricCellGridNeighborList(ax, ay, az, r));
+    }
+
+    /** Every atom's neighbor SET from {@code factory}'s source must equal the hash-box NeighborList's. */
+    private static void assertSetsMatchNeighborList(TestStructures.Structure s, NeighborSourceFactory factory) {
         IAtomContainer mol = s.load();
         org.openscience.cdk.interfaces.IAtom[] atoms = AtomContainerManipulator.getAtomArray(mol);
         int n = atoms.length;
@@ -45,14 +56,14 @@ class GridSoaEquivalenceTest {
         double radius = maxR + solvent;
 
         NeighborList ref = new NeighborList(atoms, radius);
-        CellGridNeighborList grid = new CellGridNeighborList(ax, ay, az, radius);
+        NeighborSource src = factory.create(atoms, ax, ay, az, radius);
 
         IntArrayList a = new IntArrayList(), b = new IntArrayList();
         for (int i = 0; i < n; i++) {
             final int fi = i;
             a.clear(); b.clear();
             ref.getNeighborsInto(fi, a);
-            grid.getNeighborsInto(fi, b);
+            src.getNeighborsInto(fi, b);
             assertEquals(toSet(a), toSet(b), () -> s + ": neighbor set mismatch at atom " + fi);
         }
     }
@@ -85,6 +96,15 @@ class GridSoaEquivalenceTest {
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
                 new HintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void symmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // the symmetric neighbor precompute yields the same neighbor sets, so the result is unchanged
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new SymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
     private static Set<Integer> toSet(IntArrayList list) {
