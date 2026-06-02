@@ -22,7 +22,7 @@ public class GridSoaNumericalSurface extends SoaNumericalSurface {
     }
 
     public GridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
-        super(atomContainer, solventRadius, tesslevel, GRID, NeighborOrdering.NONE);
+        super(atomContainer, solventRadius, tesslevel, GRID, NeighborOrdering.NONE, OcclusionScan.STANDARD);
     }
 
     /**
@@ -32,6 +32,17 @@ public class GridSoaNumericalSurface extends SoaNumericalSurface {
      */
     protected GridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                       NeighborOrdering ordering) {
-        super(atomContainer, solventRadius, tesslevel, GRID, ordering);
+        super(atomContainer, solventRadius, tesslevel, GRID, ordering, OcclusionScan.STANDARD);
+    }
+
+    /**
+     * For subclasses that keep the flat cell grid but supply a custom occlusion scan (e.g.
+     * {@link HintedGridSoaNumericalSurface}), optionally combined with a neighbor ordering. Both
+     * strategies are passed up to the engine constructor rather than installed via overridable
+     * methods, so they are fixed before any computation runs.
+     */
+    protected GridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                      NeighborOrdering ordering, OcclusionScan scan) {
+        super(atomContainer, solventRadius, tesslevel, GRID, ordering, scan);
     }
 }

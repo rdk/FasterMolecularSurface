@@ -70,6 +70,7 @@ public class SoaNumericalSurface implements MolecularSurface {
     private final IAtom[] atoms;
     private final NeighborSourceFactory neighborFactory;
     private final NeighborOrdering ordering;
+    private final OcclusionScan scan;
 
     private List<Point3d>[] surfPoints;
     private double[]        areas;
@@ -79,23 +80,27 @@ public class SoaNumericalSurface implements MolecularSurface {
     }
 
     public SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
-        this(atomContainer, solventRadius, tesslevel, DEFAULT_NEIGHBORS, NeighborOrdering.NONE);
+        this(atomContainer, solventRadius, tesslevel, DEFAULT_NEIGHBORS, NeighborOrdering.NONE, OcclusionScan.STANDARD);
     }
 
     /**
      * @param neighborFactory supplies the neighbor index over the extracted coordinate arrays.
      * @param ordering        reorders the per-neighbor scratch before the occlusion loop (a no-op for
-     *        the base class; see {@link OrderedGridSoaNumericalSurface}). Both strategies are passed
-     *        here (not via overridable methods) so they are fixed before {@link #init()} runs and
-     *        cannot observe uninitialized subclass state; both must be stateless for the same reason.
+     *        the base class; see {@link OrderedGridSoaNumericalSurface}).
+     * @param scan            performs the occlusion test over each atom's tessellation points (the
+     *        reference loop for the base class; see {@link HintedGridSoaNumericalSurface}). All three
+     *        strategies are passed here (not via overridable methods) so they are fixed before
+     *        {@link #init()} runs and cannot observe uninitialized subclass state; all must be
+     *        stateless for the same reason.
      */
     protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
-                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering) {
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
         this.atoms = AtomContainerManipulator.getAtomArray(atomContainer);
         this.neighborFactory = neighborFactory;
         this.ordering = ordering;
+        this.scan = scan;
         init();
     }
 
@@ -173,30 +178,11 @@ public class SoaNumericalSurface implements MolecularSurface {
 
             List<Point3d> points = reusedPointList;
             points.clear();
-            collectPoints(tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
+            scan.collect(tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
                     totalRadius, atomX, atomY, atomZ, points);
 
             this.areas[i] = 4 * Math.PI * (totalRadius * totalRadius) * points.size() / pointDensity;
             this.surfPoints[i] = new ArrayList<>(points);
-        }
-    }
-
-    private static void collectPoints(double[] tx, double[] ty, double[] tz, int numTess,
-                                      int numNeighbors, double[] diffX, double[] diffY, double[] diffZ, double[] thresh,
-                                      double totalRadius, double atomX, double atomY, double atomZ,
-                                      List<Point3d> points) {
-        for (int t = 0; t < numTess; t++) {
-            double px = tx[t], py = ty[t], pz = tz[t];
-            boolean buried = false;
-            for (int k = 0; k < numNeighbors; k++) {
-                if (diffX[k] * px + diffY[k] * py + diffZ[k] * pz > thresh[k]) {
-                    buried = true;
-                    break;
-                }
-            }
-            if (!buried) {
-                points.add(new Point3d(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ));
-            }
         }
     }
 

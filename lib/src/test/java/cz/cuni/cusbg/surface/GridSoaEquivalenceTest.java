@@ -78,6 +78,15 @@ class GridSoaEquivalenceTest {
                 new OrderedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void hintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // the last-occluder-first hint changes only the scan order, never the surviving set
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new HintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));
