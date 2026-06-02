@@ -30,7 +30,6 @@ import javax.vecmath.Point3d;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntFunction;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -55,7 +54,7 @@ import java.util.function.ToDoubleFunction;
  * {@link DevSurfaceV2Grid}) can swap in a different index without overriding a method during
  * construction. All scratch derived from the atoms is local to {@link #init()} and not retained.
  */
-public class DevSurfaceV1Soa implements MolecularSurface {
+public class DevSurfaceV1Soa implements MolecularSurface, PackedSurfaceAccess {
 
     /** Default neighbor index: the hash-box {@link NeighborList} (identical sets to FasterNumericalSurface). */
     private static final NeighborSourceFactory DEFAULT_NEIGHBORS =
@@ -71,7 +70,7 @@ public class DevSurfaceV1Soa implements MolecularSurface {
     private final NeighborOrdering ordering;
     private final OcclusionScan scan;
     private final TessellationProvider tessProvider;
-    private final IntFunction<SurfacePointStore> storeFactory;
+    private final SurfacePointStoreFactory storeFactory;
     private final boolean useArena;
     private final ToDoubleFunction<IAtom> vdwRadius;
     private final boolean directNeighbors;
@@ -125,7 +124,7 @@ public class DevSurfaceV1Soa implements MolecularSurface {
      */
     protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
-                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory) {
+                                  TessellationProvider tessProvider, SurfacePointStoreFactory storeFactory) {
         this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory, false);
     }
 
@@ -138,7 +137,7 @@ public class DevSurfaceV1Soa implements MolecularSurface {
      */
     protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
-                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
+                                  TessellationProvider tessProvider, SurfacePointStoreFactory storeFactory,
                                   boolean useArena) {
         this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory,
                 useArena, FasterNumericalSurface::getVdwRadius);
@@ -154,7 +153,7 @@ public class DevSurfaceV1Soa implements MolecularSurface {
      */
     protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
-                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
+                                  TessellationProvider tessProvider, SurfacePointStoreFactory storeFactory,
                                   boolean useArena, ToDoubleFunction<IAtom> vdwRadius) {
         this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory,
                 useArena, vdwRadius, false);
@@ -171,7 +170,7 @@ public class DevSurfaceV1Soa implements MolecularSurface {
      */
     protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
-                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
+                                  TessellationProvider tessProvider, SurfacePointStoreFactory storeFactory,
                                   boolean useArena, ToDoubleFunction<IAtom> vdwRadius, boolean directNeighbors) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
@@ -228,7 +227,13 @@ public class DevSurfaceV1Soa implements MolecularSurface {
                 ? (DirectNeighborSource) neighbors : null;
         int[] adjArr = directSrc != null ? directSrc.adjacency() : null;
 
-        this.store = storeFactory.apply(n);
+        // capacity hint for a flat store: across this corpus ~5-6% of an atom's tessellation directions
+        // survive as surface points (geometric, roughly tessellation-independent), so estimate
+        // numAtoms * numTess / 12 (~8%, modest headroom) to pre-size in one allocation and avoid the
+        // doubling-copy growth that otherwise dominates the flat store's footprint. A hint only; the
+        // store still grows if exceeded, and stores that do not need it (the list store) ignore it.
+        int estPoints = (int) Math.min(Integer.MAX_VALUE / 3L, (long) n * numTess / 12 + 64);
+        this.store = storeFactory.create(n, estPoints);
         this.areas = new double[n];
 
         // reused buffers (from the arena when enabled)
@@ -329,5 +334,17 @@ public class DevSurfaceV1Soa implements MolecularSurface {
         double ta = 0.0;
         for (double a : areas) ta += a;
         return ta;
+    }
+
+    // --- PackedSurfaceAccess: zero-copy point delivery (zero-copy when backed by a flat store) ---
+
+    @Override
+    public double[] surfacePointsXYZ() {
+        return store.packedXYZ();
+    }
+
+    @Override
+    public int surfacePointCount() {
+        return store.totalPoints();
     }
 }

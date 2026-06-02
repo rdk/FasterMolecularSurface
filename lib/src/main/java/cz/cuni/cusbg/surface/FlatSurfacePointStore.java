@@ -29,6 +29,17 @@ final class FlatSurfacePointStore implements SurfacePointStore {
         coords = new double[Math.max(64, numAtoms) * 3];   // grows on demand
     }
 
+    /**
+     * @param estimatedPoints rough upper estimate of total surface points: {@code coords} is pre-sized to
+     *        {@code 3*estimatedPoints} so the common case is a single allocation with no doubling-copy
+     *        growth (that copy garbage, not the {@code Point3d} objects, was the flat store's footprint
+     *        cost). Still grows correctly if the estimate is exceeded.
+     */
+    FlatSurfacePointStore(int numAtoms, int estimatedPoints) {
+        atomStart = new int[numAtoms + 1];
+        coords = new double[Math.max(192, estimatedPoints * 3)];
+    }
+
     @Override public void startAtom(int atomIndex) { cur = atomIndex; atomStart[atomIndex] = pointCount; }
 
     @Override
@@ -57,4 +68,9 @@ final class FlatSurfacePointStore implements SurfacePointStore {
     }
 
     @Override public int atomPointCount(int atomIndex) { return atomStart[atomIndex + 1] - atomStart[atomIndex]; }
+
+    @Override public int totalPoints() { return pointCount; }
+
+    /** Zero-copy: the internal buffer by reference (length {@code >= 3*pointCount}; valid is {@code [0,3*pointCount)}). */
+    @Override public double[] packedXYZ() { return coords; }
 }

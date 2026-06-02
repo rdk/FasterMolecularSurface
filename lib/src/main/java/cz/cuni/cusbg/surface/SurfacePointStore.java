@@ -28,4 +28,15 @@ interface SurfacePointStore extends SurfacePointSink {
 
     /** Number of surface points for atom {@code atomIndex} (cheap; no materialization). */
     int atomPointCount(int atomIndex);
+
+    /** Total number of surface points across all atoms. */
+    int totalPoints();
+
+    /**
+     * Surface point coordinates packed {@code xyzxyz...} in atom-major scan order, for the zero-copy
+     * {@link PackedSurfaceAccess} path. The returned array may be longer than {@code 3*totalPoints()}
+     * (a backing buffer exposed by reference); only {@code [0, 3*totalPoints())} is valid. A flat store
+     * returns its internal array with no copy; a {@code Point3d}-backed store assembles one.
+     */
+    double[] packedXYZ();
 }

@@ -240,6 +240,37 @@ class GridSoaEquivalenceTest {
                 new DevSurfaceV18SortedCoords(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void devSurfaceV19FlatStoreMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // V18 with the flat point store: same computation, only point storage differs (Point3d lazily
+        // materialized), so the surface must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new DevSurfaceV19FlatStore(s.load(), solvent, tess));
+    }
+
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void packedAccessAgreesWithPoint3dAccessors(TestStructures.Structure s, double solvent, int tess) {
+        // the zero-copy PackedSurfaceAccess path must yield exactly the coordinates getAllSurfacePoints()
+        // does, in the same order, for both store backings (flat = zero-copy, list = assembled)
+        assertPackedMatches(new DevSurfaceV19FlatStore(s.load(), solvent, tess));   // flat store
+        assertPackedMatches(new DevSurfaceV18SortedCoords(s.load(), solvent, tess)); // list store (fallback)
+    }
+
+    private static void assertPackedMatches(DevSurfaceV1Soa surface) {
+        javax.vecmath.Point3d[] pts = surface.getAllSurfacePoints();
+        double[] xyz = surface.surfacePointsXYZ();
+        int count = surface.surfacePointCount();
+        org.junit.jupiter.api.Assertions.assertEquals(pts.length, count, "point count");
+        for (int i = 0; i < count; i++) {
+            org.junit.jupiter.api.Assertions.assertEquals(pts[i].x, xyz[3 * i],     "x[" + i + "]");
+            org.junit.jupiter.api.Assertions.assertEquals(pts[i].y, xyz[3 * i + 1], "y[" + i + "]");
+            org.junit.jupiter.api.Assertions.assertEquals(pts[i].z, xyz[3 * i + 2], "z[" + i + "]");
+        }
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));
