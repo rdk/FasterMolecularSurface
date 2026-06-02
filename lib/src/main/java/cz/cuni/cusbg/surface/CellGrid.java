@@ -28,10 +28,18 @@ final class CellGrid {
     final int[] cx, cy, cz;  // per-atom integer cell coordinates
 
     CellGrid(double[] ax, double[] ay, double[] az, double radius) {
+        this(ax, ay, az, ax.length, radius);
+    }
+
+    /**
+     * @param n number of atoms to bin (entries {@code [0, n)} of the coordinate arrays). Passed
+     *        explicitly so the arrays may be larger than {@code n} (e.g. reused from a per-thread arena);
+     *        callers without arena reuse pass {@code ax.length}.
+     */
+    CellGrid(double[] ax, double[] ay, double[] az, int n, double radius) {
         this.ax = ax; this.ay = ay; this.az = az;
         this.boxSize = 2 * radius;
         this.cutoff2 = boxSize * boxSize;
-        int n = ax.length;
 
         cx = new int[n]; cy = new int[n]; cz = new int[n];
         int mnx = Integer.MAX_VALUE, mny = Integer.MAX_VALUE, mnz = Integer.MAX_VALUE;

@@ -42,8 +42,8 @@ final class PrunedSymmetricCellGridNeighborList implements NeighborSource {
      */
     PrunedSymmetricCellGridNeighborList(IAtom[] atoms, double[] ax, double[] ay, double[] az,
                                         double radius, double solventRadius, ToDoubleFunction<IAtom> vdwRadius) {
-        CellGrid g = new CellGrid(ax, ay, az, radius);
-        int n = ax.length;
+        int n = atoms.length;   // not ax.length: the coordinate arrays may be oversized (arena-reused)
+        CellGrid g = new CellGrid(ax, ay, az, n, radius);
 
         // per-atom expanded radius (same definition the engine uses for thresh)
         double[] expandedR = new double[n];

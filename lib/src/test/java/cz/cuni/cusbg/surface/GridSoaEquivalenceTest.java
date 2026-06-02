@@ -179,6 +179,23 @@ class GridSoaEquivalenceTest {
                 new FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void arenaTessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // reusing per-thread scratch across builds changes only allocation; buffers are fully overwritten
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void arenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new ArenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));

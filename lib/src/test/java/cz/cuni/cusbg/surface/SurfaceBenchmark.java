@@ -69,6 +69,8 @@ class SurfaceBenchmark {
         printSummaryRow("GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 10);
         printSummaryRow("TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 11);
         printSummaryRow("FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 12);
+        printSummaryRow("ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 13);
+        printSummaryRow("ArenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 14);
         System.out.println();
     }
 
@@ -87,7 +89,7 @@ class SurfaceBenchmark {
         System.out.printf("%-12s %7s %8s %8s %8s %8s %8s %8s %8s %8s %8s %9s %9s%n",
                 "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "hint", "sym", "tcd", "flat", "tcd/cdk", "flat/cdk");
         System.out.println("------------------------------------------------------------------------------------------------------------------------------");
-        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0, sumVec = 0, sumPrn = 0, sumDed = 0, sumGded = 0, sumTcd = 0, sumFlat = 0; int cdkCount = 0;
+        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0, sumVec = 0, sumPrn = 0, sumDed = 0, sumGded = 0, sumTcd = 0, sumFlat = 0, sumAtcd = 0, sumAflat = 0; int cdkCount = 0;
         for (TestStructures.Structure s : TestStructures.Structure.values()) {
             IAtomContainer mol = s.load();
 
@@ -113,6 +115,8 @@ class SurfaceBenchmark {
             double gded   = medianMillis(() -> new GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
             double tcd    = medianMillis(() -> new TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
             double flat   = medianMillis(() -> new FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double atcd   = medianMillis(() -> new ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double aflat  = medianMillis(() -> new ArenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
 
             String cdkStr = cdk == null ? "n/a(Co)" : String.format("%.1f", cdk);
             String tc = "-", fl = "-";
@@ -121,14 +125,15 @@ class SurfaceBenchmark {
                 fl = String.format("%.2fx", cdk / flat);
                 sumFst += cdk / faster; sumSoa += cdk / soa; sumGrid += cdk / grid; sumOrd += cdk / ord;
                 sumHint += cdk / hint; sumSym += cdk / sym; sumSymLA += cdk / symLA; sumVec += cdk / vec;
-                sumPrn += cdk / prn; sumDed += cdk / ded; sumGded += cdk / gded; sumTcd += cdk / tcd; sumFlat += cdk / flat; cdkCount++;
+                sumPrn += cdk / prn; sumDed += cdk / ded; sumGded += cdk / gded; sumTcd += cdk / tcd; sumFlat += cdk / flat;
+                sumAtcd += cdk / atcd; sumAflat += cdk / aflat; cdkCount++;
             }
             System.out.printf("%-12s %7d %8s %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %9s %9s%n",
                     s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, hint, sym, tcd, flat, tc, fl);
         }
         System.out.println();
         int c = Math.max(1, cdkCount);
-        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c, sumVec / c, sumPrn / c, sumDed / c, sumGded / c, sumTcd / c, sumFlat / c };
+        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c, sumVec / c, sumPrn / c, sumDed / c, sumGded / c, sumTcd / c, sumFlat / c, sumAtcd / c, sumAflat / c };
     }
 
     /** Median wall-clock time in milliseconds over MEASURE runs after WARMUP warm-up runs. */

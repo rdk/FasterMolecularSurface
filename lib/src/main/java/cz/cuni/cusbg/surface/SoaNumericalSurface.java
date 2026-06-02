@@ -71,6 +71,10 @@ public class SoaNumericalSurface implements MolecularSurface {
     private final OcclusionScan scan;
     private final TessellationProvider tessProvider;
     private final IntFunction<SurfacePointStore> storeFactory;
+    private final boolean useArena;
+
+    /** Per-thread reusable transient scratch, used only when {@code useArena} is set. */
+    private static final ThreadLocal<EngineScratch> ARENA = ThreadLocal.withInitial(EngineScratch::new);
 
     private SurfacePointStore store;
     private double[]          areas;
@@ -119,6 +123,20 @@ public class SoaNumericalSurface implements MolecularSurface {
     protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
                                   TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory) {
+        this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory, false);
+    }
+
+    /**
+     * @param useArena when true, the engine's transient per-build scratch (coordinate/radius arrays,
+     *        neighbor list, diff/thresh) is drawn from a reusable per-thread {@link EngineScratch} arena
+     *        instead of allocated per surface (optimization A). Output-identical; only allocation differs.
+     *        Requires a neighbor source that tolerates oversized coordinate arrays (takes the atom count
+     *        explicitly) - the pruned source does.
+     */
+    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
+                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
+                                  boolean useArena) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
         this.atoms = AtomContainerManipulator.getAtomArray(atomContainer);
@@ -127,15 +145,25 @@ public class SoaNumericalSurface implements MolecularSurface {
         this.scan = scan;
         this.tessProvider = tessProvider;
         this.storeFactory = storeFactory;
+        this.useArena = useArena;
         init();
     }
 
     private void init() {
         int n = atoms.length;
 
-        // extract coordinates + per-atom expanded radius once (validates 3D coords too); all local
-        double[] ax = new double[n], ay = new double[n], az = new double[n];
-        double[] atomRadius = new double[n], atomRadius2 = new double[n];
+        // transient scratch: reused from a per-thread arena when enabled, else allocated per build.
+        // The coordinate arrays may then be larger than n; only [0, n) is used and the neighbor source
+        // takes n explicitly, so the extra capacity is inert.
+        EngineScratch sc = useArena ? ARENA.get() : null;
+        double[] ax, ay, az, atomRadius, atomRadius2;
+        if (sc != null) {
+            sc.ensureAtoms(n);
+            ax = sc.ax; ay = sc.ay; az = sc.az; atomRadius = sc.atomRadius; atomRadius2 = sc.atomRadius2;
+        } else {
+            ax = new double[n]; ay = new double[n]; az = new double[n];
+            atomRadius = new double[n]; atomRadius2 = new double[n];
+        }
         double maxRadius = 0;
         for (int i = 0; i < n; i++) {
             Point3d p = atoms[i].getPoint3d();
@@ -158,9 +186,11 @@ public class SoaNumericalSurface implements MolecularSurface {
         this.store = storeFactory.apply(n);
         this.areas = new double[n];
 
-        // reused buffers
-        IntArrayList nbr = new IntArrayList(32);
-        double[] diffX = new double[512], diffY = new double[512], diffZ = new double[512], thresh = new double[512];
+        // reused buffers (from the arena when enabled)
+        IntArrayList nbr = sc != null ? sc.nbr : new IntArrayList(32);
+        double[] diffX, diffY, diffZ, thresh;
+        if (sc != null) { diffX = sc.diffX; diffY = sc.diffY; diffZ = sc.diffZ; thresh = sc.thresh; }
+        else { diffX = new double[512]; diffY = new double[512]; diffZ = new double[512]; thresh = new double[512]; }
 
         for (int i = 0; i < n; i++) {
             double totalRadius      = atomRadius[i];
@@ -175,6 +205,7 @@ public class SoaNumericalSurface implements MolecularSurface {
             if (diffX.length < numNeighbors) {
                 diffX = new double[numNeighbors]; diffY = new double[numNeighbors];
                 diffZ = new double[numNeighbors]; thresh = new double[numNeighbors];
+                if (sc != null) { sc.diffX = diffX; sc.diffY = diffY; sc.diffZ = diffZ; sc.thresh = thresh; }
             }
 
             int[] nb = nbr.buffer;
