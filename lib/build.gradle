@@ -44,6 +44,17 @@ java {
     }
 }
 
+// VectorizedOcclusionScan uses the incubator Vector API (jdk.incubator.vector). It must be on the
+// module graph to compile, and on the runtime module graph for the SIMD path to load; when it is
+// absent (older JDK or a run without the flag) VectorizedSymmetricHintedGridSoaNumericalSurface falls
+// back to the scalar scan, so the module is a build/runtime enabler, not a hard requirement.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--add-modules', 'jdk.incubator.vector']
+}
+tasks.withType(Test).configureEach {
+    jvmArgs '--add-modules', 'jdk.incubator.vector'
+}
+
 tasks.named('test') {
     // Use JUnit Platform for unit tests. Benchmarks are opt-in via the 'benchmark' task.
     useJUnitPlatform {
