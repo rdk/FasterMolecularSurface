@@ -131,6 +131,16 @@ class GridSoaEquivalenceTest {
                 new VectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void prunedVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // the per-pair occlusion cutoff only drops neighbors that provably never bury, so dropping them
+        // (and the 256-bit scan) cannot change the surface: must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new PrunedVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));
