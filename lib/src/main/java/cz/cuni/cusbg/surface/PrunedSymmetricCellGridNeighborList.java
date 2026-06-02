@@ -3,6 +3,8 @@ package cz.cuni.cusbg.surface;
 import com.carrotsearch.hppc.IntArrayList;
 import org.openscience.cdk.interfaces.IAtom;
 
+import java.util.function.ToDoubleFunction;
+
 /**
  * Like {@link SymmetricCellGridNeighborList}, but applies the exact per-pair occlusion cutoff while
  * building the adjacency: a neighbor {@code j} is kept for atom {@code i} only if their expanded
@@ -30,12 +32,22 @@ final class PrunedSymmetricCellGridNeighborList implements NeighborSource {
 
     PrunedSymmetricCellGridNeighborList(IAtom[] atoms, double[] ax, double[] ay, double[] az,
                                         double radius, double solventRadius) {
+        this(atoms, ax, ay, az, radius, solventRadius, FasterNumericalSurface::getVdwRadius);
+    }
+
+    /**
+     * @param vdwRadius van der Waals radius lookup (without solvent). The default constructor uses
+     *        {@link FasterNumericalSurface#getVdwRadius}; a variant may pass {@link VdwRadiusCache#get}
+     *        to memoize it per element symbol. Must return the same value either way (bit-exact).
+     */
+    PrunedSymmetricCellGridNeighborList(IAtom[] atoms, double[] ax, double[] ay, double[] az,
+                                        double radius, double solventRadius, ToDoubleFunction<IAtom> vdwRadius) {
         CellGrid g = new CellGrid(ax, ay, az, radius);
         int n = ax.length;
 
         // per-atom expanded radius (same definition the engine uses for thresh)
         double[] expandedR = new double[n];
-        for (int i = 0; i < n; i++) expandedR[i] = FasterNumericalSurface.getVdwRadius(atoms[i]) + solventRadius;
+        for (int i = 0; i < n; i++) expandedR[i] = vdwRadius.applyAsDouble(atoms[i]) + solventRadius;
 
         // single distance pass over forward pairs, keeping only pairs whose expanded spheres overlap
         int[] degree = new int[n];

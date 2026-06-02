@@ -169,6 +169,16 @@ class GridSoaEquivalenceTest {
                 new TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void flatTessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // flat double[] point storage + cached VdW radii change only storage and a memoized lookup,
+        // not the coordinates/areas, so the surface must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));

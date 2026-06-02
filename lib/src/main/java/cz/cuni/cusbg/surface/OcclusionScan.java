@@ -1,13 +1,10 @@
 package cz.cuni.cusbg.surface;
 
-import javax.vecmath.Point3d;
-import java.util.List;
-
 /**
  * Strategy for the occlusion scan in {@link SoaNumericalSurface}: given one atom's tessellation
  * points and its per-neighbor scratch (the parallel {@code diffX/diffY/diffZ/thresh} arrays, first
  * {@code numNeighbors} entries), decide which tessellation points survive and append the surviving
- * surface points to {@code points}.
+ * surface points to {@code sink}.
  *
  * <p>A point at unit-sphere direction {@code (px,py,pz)} is <em>buried</em> iff some neighbor
  * satisfies {@code diffX*px + diffY*py + diffZ*pz > thresh}; surviving points are mapped onto the
@@ -26,17 +23,17 @@ import java.util.List;
 interface OcclusionScan {
 
     /**
-     * Append the surviving surface points for one atom to {@code points} (which the caller has
-     * cleared). Reads only entries {@code [0, numNeighbors)} of the four parallel arrays.
+     * Append the surviving surface points for one atom to {@code sink}. Reads only entries
+     * {@code [0, numNeighbors)} of the four parallel arrays.
      */
     void collect(double[] tx, double[] ty, double[] tz, int numTess,
                  int numNeighbors, double[] diffX, double[] diffY, double[] diffZ, double[] thresh,
                  double totalRadius, double atomX, double atomY, double atomZ,
-                 List<Point3d> points);
+                 SurfacePointSink sink);
 
     /** Reference scan: test every neighbor in array order, break on the first that buries the point. */
     OcclusionScan STANDARD = (tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
-                              totalRadius, atomX, atomY, atomZ, points) -> {
+                              totalRadius, atomX, atomY, atomZ, sink) -> {
         for (int t = 0; t < numTess; t++) {
             double px = tx[t], py = ty[t], pz = tz[t];
             boolean buried = false;
@@ -47,7 +44,7 @@ interface OcclusionScan {
                 }
             }
             if (!buried) {
-                points.add(new Point3d(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ));
+                sink.add(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ);
             }
         }
     };
@@ -61,7 +58,7 @@ interface OcclusionScan {
      * so the scan is stateless across atoms. See {@link HintedGridSoaNumericalSurface}.
      */
     OcclusionScan LAST_OCCLUDER_FIRST = (tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
-                                         totalRadius, atomX, atomY, atomZ, points) -> {
+                                         totalRadius, atomX, atomY, atomZ, sink) -> {
         int last = -1;   // neighbor that buried the previous point, or -1 (per-atom local; reset here)
         for (int t = 0; t < numTess; t++) {
             double px = tx[t], py = ty[t], pz = tz[t];
@@ -79,7 +76,7 @@ interface OcclusionScan {
                 }
             }
             if (!buried) {
-                points.add(new Point3d(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ));
+                sink.add(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ);
             }
         }
     };

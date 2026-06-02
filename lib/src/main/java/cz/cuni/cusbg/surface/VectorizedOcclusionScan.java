@@ -5,8 +5,6 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
-import javax.vecmath.Point3d;
-import java.util.List;
 
 /**
  * SIMD occlusion scan using the {@code jdk.incubator.vector} API: the buried test is evaluated for a
@@ -33,7 +31,7 @@ final class VectorizedOcclusionScan implements OcclusionScan {
     public void collect(double[] tx, double[] ty, double[] tz, int numTess,
                         int numNeighbors, double[] diffX, double[] diffY, double[] diffZ, double[] thresh,
                         double totalRadius, double atomX, double atomY, double atomZ,
-                        List<Point3d> points) {
+                        SurfacePointSink sink) {
         int laneWidth = SPECIES.length();
         int bound = SPECIES.loopBound(numNeighbors);   // largest multiple of laneWidth <= numNeighbors
         int last = -1;   // last-occluder hint (per-atom local; reset here)
@@ -73,7 +71,7 @@ final class VectorizedOcclusionScan implements OcclusionScan {
                 }
             }
             if (!buried) {
-                points.add(new Point3d(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ));
+                sink.add(totalRadius * px + atomX, totalRadius * py + atomY, totalRadius * pz + atomZ);
             }
         }
     }

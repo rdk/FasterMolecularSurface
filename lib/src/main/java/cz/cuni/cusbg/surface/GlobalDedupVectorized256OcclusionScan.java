@@ -5,11 +5,9 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
-import javax.vecmath.Point3d;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -48,7 +46,7 @@ final class GlobalDedupVectorized256OcclusionScan implements OcclusionScan {
     public void collect(double[] tx, double[] ty, double[] tz, int numTess,
                         int numNeighbors, double[] diffX, double[] diffY, double[] diffZ, double[] thresh,
                         double totalRadius, double atomX, double atomY, double atomZ,
-                        List<Point3d> points) {
+                        SurfacePointSink sink) {
         Mapping m = this.mapping;
         if (m == null) {
             m = CACHE.get(tesslevel);
@@ -108,7 +106,7 @@ final class GlobalDedupVectorized256OcclusionScan implements OcclusionScan {
         // 2) re-expand in original tessellation order (preserves multiset + order)
         for (int t = 0; t < numTess; t++) {
             if (!buried[dirOf[t]]) {
-                points.add(new Point3d(totalRadius * tx[t] + atomX, totalRadius * ty[t] + atomY, totalRadius * tz[t] + atomZ));
+                sink.add(totalRadius * tx[t] + atomX, totalRadius * ty[t] + atomY, totalRadius * tz[t] + atomZ);
             }
         }
     }

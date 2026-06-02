@@ -27,11 +27,10 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 import javax.vecmath.Point3d;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntFunction;
 
 /**
  * Structure-of-arrays (SoA) variant of {@link FasterNumericalSurface}.
@@ -71,9 +70,10 @@ public class SoaNumericalSurface implements MolecularSurface {
     private final NeighborOrdering ordering;
     private final OcclusionScan scan;
     private final TessellationProvider tessProvider;
+    private final IntFunction<SurfacePointStore> storeFactory;
 
-    private List<Point3d>[] surfPoints;
-    private double[]        areas;
+    private SurfacePointStore store;
+    private double[]          areas;
 
     public SoaNumericalSurface(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
@@ -107,6 +107,18 @@ public class SoaNumericalSurface implements MolecularSurface {
     protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
                                   TessellationProvider tessProvider) {
+        this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, ListSurfacePointStore::new);
+    }
+
+    /**
+     * @param storeFactory builds the per-surface point store from the atom count. The default
+     *        {@link ListSurfacePointStore} keeps one {@code Point3d} per point (original behavior); a
+     *        variant may pass {@link FlatSurfacePointStore}{@code ::new} to store coordinates flat and
+     *        materialize {@code Point3d} lazily. Fixed before {@link #init()} like the other strategies.
+     */
+    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
+                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
         this.atoms = AtomContainerManipulator.getAtomArray(atomContainer);
@@ -114,6 +126,7 @@ public class SoaNumericalSurface implements MolecularSurface {
         this.ordering = ordering;
         this.scan = scan;
         this.tessProvider = tessProvider;
+        this.storeFactory = storeFactory;
         init();
     }
 
@@ -142,11 +155,10 @@ public class SoaNumericalSurface implements MolecularSurface {
 
         NeighborSource neighbors = neighborFactory.create(atoms, ax, ay, az, maxRadius + solventRadius);
 
-        this.surfPoints = (List<Point3d>[]) new List[n];
+        this.store = storeFactory.apply(n);
         this.areas = new double[n];
 
         // reused buffers
-        List<Point3d> reusedPointList = new ArrayList<>(512);
         IntArrayList nbr = new IntArrayList(32);
         double[] diffX = new double[512], diffY = new double[512], diffZ = new double[512], thresh = new double[512];
 
@@ -184,13 +196,12 @@ public class SoaNumericalSurface implements MolecularSurface {
             // so the order of the OR does not matter). See NeighborOrdering.
             ordering.order(diffX, diffY, diffZ, thresh, numNeighbors);
 
-            List<Point3d> points = reusedPointList;
-            points.clear();
+            store.startAtom(i);
             scan.collect(tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
-                    totalRadius, atomX, atomY, atomZ, points);
+                    totalRadius, atomX, atomY, atomZ, store);
+            int count = store.finishAtom();
 
-            this.areas[i] = 4 * Math.PI * (totalRadius * totalRadius) * points.size() / pointDensity;
-            this.surfPoints[i] = new ArrayList<>(points);
+            this.areas[i] = 4 * Math.PI * (totalRadius * totalRadius) * count / pointDensity;
         }
     }
 
@@ -198,34 +209,28 @@ public class SoaNumericalSurface implements MolecularSurface {
 
     @Override
     public Point3d[] getAllSurfacePoints() {
-        int npt = 0;
-        for (List<Point3d> s : surfPoints) npt += s.size();
-        Point3d[] ret = new Point3d[npt];
-        int j = 0;
-        for (List<Point3d> pts : surfPoints)
-            for (Point3d p : pts) ret[j++] = p;
-        return ret;
+        return store.allPoints();
     }
 
     @Override
     public Map<IAtom, List<Point3d>> getAtomSurfaceMap() {
         Map<IAtom, List<Point3d>> map = new HashMap<>();
-        for (int i = 0; i < surfPoints.length; i++)
-            if (!surfPoints[i].isEmpty())
-                map.put(atoms[i], Collections.unmodifiableList(surfPoints[i]));
+        for (int i = 0; i < atoms.length; i++)
+            if (store.atomPointCount(i) > 0)
+                map.put(atoms[i], store.atomPoints(i));
         return map;
     }
 
     @Override
     public Point3d[] getSurfacePoints(int atomIdx) throws CDKException {
-        if (atomIdx < 0 || atomIdx >= surfPoints.length)
+        if (atomIdx < 0 || atomIdx >= atoms.length)
             throw new CDKException("Atom index was out of bounds");
-        return surfPoints[atomIdx].toArray(new Point3d[0]);
+        return store.atomPoints(atomIdx).toArray(new Point3d[0]);
     }
 
     @Override
     public double getSurfaceArea(int atomIdx) throws CDKException {
-        if (atomIdx < 0 || atomIdx >= surfPoints.length)
+        if (atomIdx < 0 || atomIdx >= atoms.length)
             throw new CDKException("Atom index was out of bounds");
         return areas[atomIdx];
     }
