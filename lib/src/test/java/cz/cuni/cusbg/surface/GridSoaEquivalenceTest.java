@@ -151,6 +151,15 @@ class GridSoaEquivalenceTest {
                 new DedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void globalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // the process-wide-cached direction mapping is the same mapping, just computed once; result unchanged
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));

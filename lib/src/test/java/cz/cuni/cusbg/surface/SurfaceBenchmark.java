@@ -66,6 +66,7 @@ class SurfaceBenchmark {
         printSummaryRow("VectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 7);
         printSummaryRow("PrunedVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 8);
         printSummaryRow("DedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 9);
+        printSummaryRow("GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 10);
         System.out.println();
     }
 
@@ -82,9 +83,9 @@ class SurfaceBenchmark {
     private double[] runVariantTable(double solvent, int tess) {
         System.out.printf("%n=== CDK vs variants @ solventRadius=%.1f, tessLevel=%d ===%n", solvent, tess);
         System.out.printf("%-12s %7s %8s %8s %8s %8s %8s %8s %8s %8s %8s %9s %9s%n",
-                "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "hint", "sym", "prn", "ded", "prn/cdk", "ded/cdk");
+                "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "hint", "sym", "ded", "gded", "ded/cdk", "gded/cdk");
         System.out.println("------------------------------------------------------------------------------------------------------------------------------");
-        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0, sumVec = 0, sumPrn = 0, sumDed = 0; int cdkCount = 0;
+        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0, sumVec = 0, sumPrn = 0, sumDed = 0, sumGded = 0; int cdkCount = 0;
         for (TestStructures.Structure s : TestStructures.Structure.values()) {
             IAtomContainer mol = s.load();
 
@@ -107,21 +108,23 @@ class SurfaceBenchmark {
             double vec    = medianMillis(() -> new VectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
             double prn    = medianMillis(() -> new PrunedVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
             double ded    = medianMillis(() -> new DedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double gded   = medianMillis(() -> new GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
 
             String cdkStr = cdk == null ? "n/a(Co)" : String.format("%.1f", cdk);
-            String pr = "-", de = "-";
+            String de = "-", gd = "-";
             if (cdk != null) {
-                pr = String.format("%.2fx", cdk / prn);
                 de = String.format("%.2fx", cdk / ded);
+                gd = String.format("%.2fx", cdk / gded);
                 sumFst += cdk / faster; sumSoa += cdk / soa; sumGrid += cdk / grid; sumOrd += cdk / ord;
-                sumHint += cdk / hint; sumSym += cdk / sym; sumSymLA += cdk / symLA; sumVec += cdk / vec; sumPrn += cdk / prn; sumDed += cdk / ded; cdkCount++;
+                sumHint += cdk / hint; sumSym += cdk / sym; sumSymLA += cdk / symLA; sumVec += cdk / vec;
+                sumPrn += cdk / prn; sumDed += cdk / ded; sumGded += cdk / gded; cdkCount++;
             }
             System.out.printf("%-12s %7d %8s %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %9s %9s%n",
-                    s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, hint, sym, prn, ded, pr, de);
+                    s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, hint, sym, ded, gded, de, gd);
         }
         System.out.println();
         int c = Math.max(1, cdkCount);
-        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c, sumVec / c, sumPrn / c, sumDed / c };
+        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c, sumVec / c, sumPrn / c, sumDed / c, sumGded / c };
     }
 
     /** Median wall-clock time in milliseconds over MEASURE runs after WARMUP warm-up runs. */
