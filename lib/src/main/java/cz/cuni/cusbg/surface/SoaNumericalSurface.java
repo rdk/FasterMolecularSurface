@@ -22,7 +22,6 @@ package cz.cuni.cusbg.surface;
 
 import com.carrotsearch.hppc.IntArrayList;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.geometry.surface.Tessellate;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
@@ -71,6 +70,7 @@ public class SoaNumericalSurface implements MolecularSurface {
     private final NeighborSourceFactory neighborFactory;
     private final NeighborOrdering ordering;
     private final OcclusionScan scan;
+    private final TessellationProvider tessProvider;
 
     private List<Point3d>[] surfPoints;
     private double[]        areas;
@@ -95,12 +95,25 @@ public class SoaNumericalSurface implements MolecularSurface {
      */
     protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan) {
+        this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, TessellationProvider.FRESH);
+    }
+
+    /**
+     * @param tessProvider supplies the unit-sphere tessellation. {@link TessellationProvider#FRESH}
+     *        (the default for the other constructors) rebuilds it per surface, matching the original
+     *        behavior; a variant may pass {@link TessellationProvider#CACHED} to reuse a process-wide
+     *        shared tessellation. Like the other strategies it is fixed before {@link #init()} runs.
+     */
+    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
+                                  TessellationProvider tessProvider) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
         this.atoms = AtomContainerManipulator.getAtomArray(atomContainer);
         this.neighborFactory = neighborFactory;
         this.ordering = ordering;
         this.scan = scan;
+        this.tessProvider = tessProvider;
         init();
     }
 
@@ -121,16 +134,11 @@ public class SoaNumericalSurface implements MolecularSurface {
             if (r > maxRadius) maxRadius = r;
         }
 
-        // tessellation (flat SoA)
-        Tessellate tess = new Tessellate("ico", tesslevel);
-        tess.doTessellate();
-        Point3d[] tessPoints = tess.getTessAsPoint3ds();
-        int numTess = tessPoints.length;
-        double[] tx = new double[numTess], ty = new double[numTess], tz = new double[numTess];
-        for (int t = 0; t < numTess; t++) {
-            tx[t] = tessPoints[t].x; ty[t] = tessPoints[t].y; tz[t] = tessPoints[t].z;
-        }
-        int pointDensity = tess.getNumberOfTriangles() * 3;
+        // tessellation (flat SoA): fresh per build by default; a cached provider shares it across builds
+        Tessellation tessel = tessProvider.get(tesslevel);
+        double[] tx = tessel.tx, ty = tessel.ty, tz = tessel.tz;
+        int numTess = tessel.numTess;
+        int pointDensity = tessel.pointDensity;
 
         NeighborSource neighbors = neighborFactory.create(atoms, ax, ay, az, maxRadius + solventRadius);
 
