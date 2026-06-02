@@ -39,6 +39,12 @@ class GridSoaEquivalenceTest {
         assertSetsMatchNeighborList(s, (atoms, ax, ay, az, r) -> new SymmetricCellGridNeighborList(ax, ay, az, r));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structures")
+    void lowAllocSymmetricGridNeighborSetsMatchNeighborList(TestStructures.Structure s) {
+        assertSetsMatchNeighborList(s, (atoms, ax, ay, az, r) -> new LowAllocSymmetricCellGridNeighborList(ax, ay, az, r));
+    }
+
     /** Every atom's neighbor SET from {@code factory}'s source must equal the hash-box NeighborList's. */
     private static void assertSetsMatchNeighborList(TestStructures.Structure s, NeighborSourceFactory factory) {
         IAtomContainer mol = s.load();
@@ -105,6 +111,15 @@ class GridSoaEquivalenceTest {
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
                 new SymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+    }
+
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void lowAllocSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // the lower-allocation two-pass symmetric precompute still yields the same neighbor sets
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new LowAllocSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
     private static Set<Integer> toSet(IntArrayList list) {

@@ -59,6 +59,7 @@ class SurfaceBenchmark {
         printSummaryRow("OrderedGridSoaNumericalSurface", meanVsCdk, 3);
         printSummaryRow("HintedGridSoaNumericalSurface", meanVsCdk, 4);
         printSummaryRow("SymmetricHintedGridSoaNumericalSurface", meanVsCdk, 5);
+        printSummaryRow("LowAllocSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 6);
         System.out.println();
     }
 
@@ -71,13 +72,13 @@ class SurfaceBenchmark {
         System.out.println();
     }
 
-    /** Prints the per-structure table at one tessellation level; returns mean {faster,soa,grid,ord,hint,sym} speedup vs CDK. */
+    /** Prints the per-structure table at one tessellation level; returns mean {faster,soa,grid,ord,hint,sym,symLA} speedup vs CDK. */
     private double[] runVariantTable(double solvent, int tess) {
         System.out.printf("%n=== CDK vs variants @ solventRadius=%.1f, tessLevel=%d ===%n", solvent, tess);
-        System.out.printf("%-12s %7s %8s %8s %8s %8s %8s %8s %8s %9s %9s%n",
-                "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "hint", "sym", "hint/cdk", "sym/cdk");
-        System.out.println("------------------------------------------------------------------------------------------------------------");
-        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0; int cdkCount = 0;
+        System.out.printf("%-12s %7s %8s %8s %8s %8s %8s %8s %8s %8s %9s %10s%n",
+                "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "hint", "sym", "symLA", "sym/cdk", "symLA/cdk");
+        System.out.println("--------------------------------------------------------------------------------------------------------------------");
+        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0; int cdkCount = 0;
         for (TestStructures.Structure s : TestStructures.Structure.values()) {
             IAtomContainer mol = s.load();
 
@@ -96,21 +97,22 @@ class SurfaceBenchmark {
             double ord    = medianMillis(() -> new OrderedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
             double hint   = medianMillis(() -> new HintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
             double sym    = medianMillis(() -> new SymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double symLA  = medianMillis(() -> new LowAllocSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
 
             String cdkStr = cdk == null ? "n/a(Co)" : String.format("%.1f", cdk);
-            String h = "-", sy = "-";
+            String sy = "-", syLA = "-";
             if (cdk != null) {
-                h = String.format("%.2fx", cdk / hint);
                 sy = String.format("%.2fx", cdk / sym);
+                syLA = String.format("%.2fx", cdk / symLA);
                 sumFst += cdk / faster; sumSoa += cdk / soa; sumGrid += cdk / grid; sumOrd += cdk / ord;
-                sumHint += cdk / hint; sumSym += cdk / sym; cdkCount++;
+                sumHint += cdk / hint; sumSym += cdk / sym; sumSymLA += cdk / symLA; cdkCount++;
             }
-            System.out.printf("%-12s %7d %8s %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %9s %9s%n",
-                    s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, hint, sym, h, sy);
+            System.out.printf("%-12s %7d %8s %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %9s %10s%n",
+                    s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, hint, sym, symLA, sy, syLA);
         }
         System.out.println();
         int c = Math.max(1, cdkCount);
-        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c };
+        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c };
     }
 
     /** Median wall-clock time in milliseconds over MEASURE runs after WARMUP warm-up runs. */
