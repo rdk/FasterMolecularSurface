@@ -252,6 +252,17 @@ class GridSoaEquivalenceTest {
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
+    void packedNumericalSurfaceMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // production flat-store class: same pipeline + radii as FasterNumericalSurface, only storage and
+        // a memoized lookup differ, so the surface must match bit-for-bit; also check the zero-copy path
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new PackedNumericalSurface(s.load(), solvent, tess));
+        assertPackedMatches(new PackedNumericalSurface(s.load(), solvent, tess));
+    }
+
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
     void packedAccessAgreesWithPoint3dAccessors(TestStructures.Structure s, double solvent, int tess) {
         // the zero-copy PackedSurfaceAccess path must yield exactly the coordinates getAllSurfacePoints()
         // does, in the same order, for both store backings (flat = zero-copy, list = assembled)
