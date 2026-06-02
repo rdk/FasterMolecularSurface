@@ -125,7 +125,7 @@ public class FasterNumericalSurface implements MolecularSurface {
      * Order of preference: CDK's {@link PeriodicTable#getVdwRadius} (enum-backed),
      * then the bundled {@code radii-vdw.txt} table, then a 2.0 A default.
      */
-    private static double getVdwRadius(IAtom atom) {
+    static double getVdwRadius(IAtom atom) {   // package-private: shared by sibling MolecularSurface variants so radii are identical
         String symbol = atom.getSymbol();
         Double r = PeriodicTable.getVdwRadius(symbol);
         if (r != null) return r;

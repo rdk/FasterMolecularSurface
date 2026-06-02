@@ -30,34 +30,82 @@ class SurfaceBenchmark {
     /** Accumulates results so the JIT cannot eliminate the timed work. */
     private static volatile double blackhole;
 
-    @Test
-    void benchmarkFasterVsCdk() {
-        System.out.printf("%n%-12s %10s %14s %14s %9s%n",
-                "structure", "atoms", "faster (ms)", "cdk (ms)", "speedup");
-        System.out.println("-----------------------------------------------------------------");
+    /**
+     * Times CDK's reference {@code NumericalSurface} and the optimized variants
+     * ({@link FasterNumericalSurface}, {@link SoaNumericalSurface}, {@link GridSoaNumericalSurface})
+     * on the same corpus, at both the library-default tessellation and p2rank's lower one. Add a
+     * column when a new variant lands.
+     */
+    private static final int[] TESS_LEVELS = {4, 3, 2};   // 4 = library default, 2 = p2rank's operating point
 
+    @Test
+    void benchmarkVariants() {
+        // per-level detail tables, collecting the mean speed-vs-CDK of each generator
+        double[][] meanVsCdk = new double[TESS_LEVELS.length][]; // [level] -> {faster, soa, grid}
+        for (int i = 0; i < TESS_LEVELS.length; i++) {
+            meanVsCdk[i] = runVariantTable(1.4, TESS_LEVELS[i]);
+        }
+
+        // summary: all four generators, mean speedup vs CDK (over the CDK-runnable structures)
+        System.out.printf("%n=== Summary: mean speedup vs CDK NumericalSurface (corpus) ===%n");
+        System.out.printf("%-26s", "generator");
+        for (int t : TESS_LEVELS) System.out.printf(" %9s", "tess" + t);
+        System.out.println();
+        System.out.println("------------------------------------------------------");
+        printSummaryRow("CDK NumericalSurface", meanVsCdk, -1);
+        printSummaryRow("FasterNumericalSurface", meanVsCdk, 0);
+        printSummaryRow("SoaNumericalSurface", meanVsCdk, 1);
+        printSummaryRow("GridSoaNumericalSurface", meanVsCdk, 2);
+        printSummaryRow("OrderedGridSoaNumericalSurface", meanVsCdk, 3);
+        System.out.println();
+    }
+
+    private static void printSummaryRow(String name, double[][] meanVsCdk, int gen) {
+        System.out.printf("%-26s", name);
+        for (double[] level : meanVsCdk) {
+            double v = gen < 0 ? 1.0 : level[gen];   // CDK is the 1.00x baseline
+            System.out.printf(" %8.2fx", v);
+        }
+        System.out.println();
+    }
+
+    /** Prints the per-structure table at one tessellation level; returns mean {faster,soa,grid,ordered} speedup vs CDK. */
+    private double[] runVariantTable(double solvent, int tess) {
+        System.out.printf("%n=== CDK vs variants @ solventRadius=%.1f, tessLevel=%d ===%n", solvent, tess);
+        System.out.printf("%-12s %7s %8s %8s %8s %8s %8s %9s %9s%n",
+                "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "grid/cdk", "ord/cdk");
+        System.out.println("------------------------------------------------------------------------------------------");
+        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0; int cdkCount = 0;
         for (TestStructures.Structure s : TestStructures.Structure.values()) {
             IAtomContainer mol = s.load();
 
-            double faster = medianMillis(() ->
-                    new FasterNumericalSurface(mol).getTotalSurfaceArea());
-
-            // CDK's reference NPEs on cobalt (3CI3); skip the comparison column there.
+            // CDK's reference NumericalSurface NPEs on cobalt (3CI3); skip its column there.
             Double cdk = null;
             if (s != TestStructures.Structure.COBALAMIN) {
                 cdk = medianMillis(() -> {
-                    NumericalSurface ns = new NumericalSurface(mol, 1.4, 4);
+                    NumericalSurface ns = new NumericalSurface(mol, solvent, tess);
                     ns.calculateSurface();
                     return ns.getTotalSurfaceArea();
                 });
             }
+            double faster = medianMillis(() -> new FasterNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double soa    = medianMillis(() -> new SoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double grid   = medianMillis(() -> new GridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double ord    = medianMillis(() -> new OrderedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
 
-            String cdkStr = cdk == null ? "n/a (Co)" : String.format("%.1f", cdk);
-            String speedup = cdk == null ? "-" : String.format("%.2fx", cdk / faster);
-            System.out.printf("%-12s %10d %14.1f %14s %9s%n",
-                    s.pdbId, s.atomCount, faster, cdkStr, speedup);
+            String cdkStr = cdk == null ? "n/a(Co)" : String.format("%.1f", cdk);
+            String g = "-", o = "-";
+            if (cdk != null) {
+                g = String.format("%.2fx", cdk / grid);
+                o = String.format("%.2fx", cdk / ord);
+                sumFst += cdk / faster; sumSoa += cdk / soa; sumGrid += cdk / grid; sumOrd += cdk / ord; cdkCount++;
+            }
+            System.out.printf("%-12s %7d %8s %8.1f %8.1f %8.1f %8.1f %9s %9s%n",
+                    s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, g, o);
         }
         System.out.println();
+        int c = Math.max(1, cdkCount);
+        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c };
     }
 
     /** Median wall-clock time in milliseconds over MEASURE runs after WARMUP warm-up runs. */
