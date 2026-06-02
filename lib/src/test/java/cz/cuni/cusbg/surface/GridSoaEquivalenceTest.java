@@ -229,6 +229,17 @@ class GridSoaEquivalenceTest {
                 new DevSurfaceV17PackedNbr(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void devSurfaceV18SortedCoordsMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // reading candidate coordinates from a cell-sorted copy (coords[4p]==ax[cellAtoms[p]]) instead of
+        // gathering at the atom index changes only the memory layout of the reads; the values, the
+        // comparisons, and the recorded edges are identical, so the surface must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new DevSurfaceV18SortedCoords(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));

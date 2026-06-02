@@ -44,7 +44,8 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 13 | `DevSurfaceV13Arena` | per-thread scratch arena (A) on V11 | 21.83x | 15.47x | 10.67x |
 | 14 | `DevSurfaceV14ArenaFlat` | per-thread scratch arena (A) on V12 | 19.72x | 15.03x | 10.69x |
 | 16 | `DevSurfaceV16DirectNbr` | copy-free CSR neighbor access (#2) + cached VdW, on V11 | see below | | |
-| 17 | `DevSurfaceV17PackedNbr` | packed single-`int[]` edge buffer, on V16 **(champion)** | see below | | |
+| 17 | `DevSurfaceV17PackedNbr` | packed single-`int[]` edge buffer, on V16 | see below | | |
+| 18 | `DevSurfaceV18SortedCoords` | cell-sorted candidate coordinates (sequential read, no gather), on V17 **(champion)** | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -70,7 +71,7 @@ everywhere, no regression. Enabling the copy-free path is opt-in (`directNeighbo
 and the others keep the copy path and stay byte-identical baselines; the V11 row re-measured at 8.11 vs
 8.02 Matoms/s confirms the shared-engine change is neutral.
 
-**Champion: `DevSurfaceV17PackedNbr` (rung 17).** Profiling V16 showed that once the per-query copy was
+**Rung 17, `DevSurfaceV17PackedNbr`.** Profiling V16 showed that once the per-query copy was
 gone, the construction's *own* edge buffering became the top non-scan hot method: the pruned build
 records each kept edge with `edgeI.add(i); edgeJ.add(j)` into two HPPC `IntArrayList`s, which the V16
 profile put at ~25% of CPU single-thread and **~34% at 16 threads** (and most of the 63% `int[]`
@@ -83,6 +84,22 @@ at tess 2 / 16 threads, **1.005x** at tess 4 single-thread, **1.017x** at tess 4
 neighbor build is the biggest fraction and the bandwidth-bound regime rewards a single write-stream -
 and shrinks at tess 4 where the SAS scan dominates. No regression anywhere. This is the V16 profile's
 predicted #1 lever (make the edge buffer cheap, don't remove it), and it landed.
+
+**Champion: `DevSurfaceV18SortedCoords` (rung 18).** Profiling V17 showed the build was still the top
+hot method at 16 threads (~47%), with ~87% of its samples on the inner cell-scan loop reading each
+candidate's coordinates `ax[j], ay[j], az[j], expandedR[j]` at the candidate's *atom* index
+`j = cellAtoms[p]` - a 4-way **random gather**, since `j` runs in cell order, not atom order. The build
+had become memory-latency-bound on that gather. V18 builds, once, a cell-sorted interleaved coordinate
+array (`coords[4p..4p+3] = (x,y,z,expandedR)` of `cellAtoms[p]`) with a single gather pass, then the
+distance pass reads it **sequentially** as it scans a cell - one streaming read per candidate instead of
+four random loads. Each candidate's coordinates are read many times (once per appearance across neighbor
+cells) but the sorted copy is built once, so the trade favors it. Measured vs V17 (same harness, median
+of 7): **1.031x** at tess 2 single-thread, **1.056x** at tess 2 / 16 threads (vs V11: 1.131x / 1.169x).
+Largest at 16 threads, the memory-bandwidth-bound regime that most rewards sequential access; smaller at
+tess 4 where the SAS scan dominates. No regression. `CellGrid` is untouched (the source builds its own
+sorted copy), so the other variants stay byte-identical baselines. This is the V17 profile's predicted
+lever (turn the candidate gather into a sequential stream), and the last random-access hot path in the
+build: at p2rank's tess 2 the ladder now reaches ~13x CDK single-thread / ~13.2x at 16 threads.
 
 **Side-branch (regression, kept as a documented negative result):** `DevSurfaceV15LeanNbr` (rung 15)
 applies the V6 bufferless two-pass build to V11's pruned neighbor source (#1) plus engine-side cached

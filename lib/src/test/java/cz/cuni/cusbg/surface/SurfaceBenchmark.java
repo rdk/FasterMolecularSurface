@@ -74,6 +74,7 @@ class SurfaceBenchmark {
         printSummaryRow("DevSurfaceV15LeanNbr", meanVsCdk, 15);
         printSummaryRow("DevSurfaceV16DirectNbr", meanVsCdk, 16);
         printSummaryRow("DevSurfaceV17PackedNbr", meanVsCdk, 17);
+        printSummaryRow("DevSurfaceV18SortedCoords", meanVsCdk, 18);
         System.out.println();
     }
 
@@ -92,7 +93,7 @@ class SurfaceBenchmark {
         System.out.printf("%-12s %7s %8s %8s %8s %8s %8s %8s %8s %8s %8s %9s %9s%n",
                 "structure", "atoms", "cdk(ms)", "faster", "soa", "grid", "ord", "hint", "sym", "tcd", "flat", "tcd/cdk", "flat/cdk");
         System.out.println("------------------------------------------------------------------------------------------------------------------------------");
-        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0, sumVec = 0, sumPrn = 0, sumDed = 0, sumGded = 0, sumTcd = 0, sumFlat = 0, sumAtcd = 0, sumAflat = 0, sumLean = 0, sumDirect = 0, sumPacked = 0; int cdkCount = 0;
+        double sumFst = 0, sumSoa = 0, sumGrid = 0, sumOrd = 0, sumHint = 0, sumSym = 0, sumSymLA = 0, sumVec = 0, sumPrn = 0, sumDed = 0, sumGded = 0, sumTcd = 0, sumFlat = 0, sumAtcd = 0, sumAflat = 0, sumLean = 0, sumDirect = 0, sumPacked = 0, sumSorted = 0; int cdkCount = 0;
         for (TestStructures.Structure s : TestStructures.Structure.values()) {
             IAtomContainer mol = s.load();
 
@@ -123,6 +124,7 @@ class SurfaceBenchmark {
             double lean   = medianMillis(() -> new DevSurfaceV15LeanNbr(mol, solvent, tess).getTotalSurfaceArea());
             double direct = medianMillis(() -> new DevSurfaceV16DirectNbr(mol, solvent, tess).getTotalSurfaceArea());
             double packed = medianMillis(() -> new DevSurfaceV17PackedNbr(mol, solvent, tess).getTotalSurfaceArea());
+            double sorted = medianMillis(() -> new DevSurfaceV18SortedCoords(mol, solvent, tess).getTotalSurfaceArea());
 
             String cdkStr = cdk == null ? "n/a(Co)" : String.format("%.1f", cdk);
             String tc = "-", fl = "-";
@@ -132,14 +134,14 @@ class SurfaceBenchmark {
                 sumFst += cdk / faster; sumSoa += cdk / soa; sumGrid += cdk / grid; sumOrd += cdk / ord;
                 sumHint += cdk / hint; sumSym += cdk / sym; sumSymLA += cdk / symLA; sumVec += cdk / vec;
                 sumPrn += cdk / prn; sumDed += cdk / ded; sumGded += cdk / gded; sumTcd += cdk / tcd; sumFlat += cdk / flat;
-                sumAtcd += cdk / atcd; sumAflat += cdk / aflat; sumLean += cdk / lean; sumDirect += cdk / direct; sumPacked += cdk / packed; cdkCount++;
+                sumAtcd += cdk / atcd; sumAflat += cdk / aflat; sumLean += cdk / lean; sumDirect += cdk / direct; sumPacked += cdk / packed; sumSorted += cdk / sorted; cdkCount++;
             }
             System.out.printf("%-12s %7d %8s %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %9s %9s%n",
                     s.pdbId, s.atomCount, cdkStr, faster, soa, grid, ord, hint, sym, tcd, flat, tc, fl);
         }
         System.out.println();
         int c = Math.max(1, cdkCount);
-        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c, sumVec / c, sumPrn / c, sumDed / c, sumGded / c, sumTcd / c, sumFlat / c, sumAtcd / c, sumAflat / c, sumLean / c, sumDirect / c, sumPacked / c };
+        return new double[]{ sumFst / c, sumSoa / c, sumGrid / c, sumOrd / c, sumHint / c, sumSym / c, sumSymLA / c, sumVec / c, sumPrn / c, sumDed / c, sumGded / c, sumTcd / c, sumFlat / c, sumAtcd / c, sumAflat / c, sumLean / c, sumDirect / c, sumPacked / c, sumSorted / c };
     }
 
     /** Median wall-clock time in milliseconds over MEASURE runs after WARMUP warm-up runs. */
