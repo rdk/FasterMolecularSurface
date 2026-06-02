@@ -39,18 +39,44 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 8 | `DevSurfaceV8Pruned` | per-pair occlusion cutoff + 256-bit lanes | 12.19x | 8.86x | 5.78x |
 | 9 | `DevSurfaceV9Dedup` | scan distinct tessellation directions | 19.06x | 14.90x | 10.46x |
 | 10 | `DevSurfaceV10CachedMap` | cache the direction mapping process-wide | 20.10x | 14.22x | 10.53x |
-| 11 | `DevSurfaceV11CachedTess` | cache the tessellation arrays **(champion)** | **20.31x** | **15.38x** | **10.59x** |
+| 11 | `DevSurfaceV11CachedTess` | cache the tessellation arrays | 20.31x | 15.38x | 10.59x |
 | 12 | `DevSurfaceV12Flat` | flat `double[]` point output (B) + cached VdW radii (D) | 18.30x | 14.91x | 10.64x |
 | 13 | `DevSurfaceV13Arena` | per-thread scratch arena (A) on V11 | 21.83x | 15.47x | 10.67x |
 | 14 | `DevSurfaceV14ArenaFlat` | per-thread scratch arena (A) on V12 | 19.72x | 15.03x | 10.69x |
+| 16 | `DevSurfaceV16DirectNbr` | copy-free CSR neighbor access (#2) + cached VdW, on V11 **(champion)** | see below | | |
 
-Net at p2rank's operating point (tess 2): **~10.6x CDK** (champion V11), about **2.3x** over the first
+Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
 reductions: bit-exact and lower-allocation, but ~flat on single-thread speed here (the kernel is
-bandwidth/turbo-bound, not GC-bound), so V11 stays the single-thread champion and V14 is the leanest
-for throughput-at-scale. On HotSpot 25 (C2) the same ladder tops out around 11-12x at tess 4 / ~9x at
-tess 2; Graal's JIT optimizes these SoA/SIMD/dedup loops markedly better, and the gap widens with
-tessellation.
+bandwidth/turbo-bound, not GC-bound). On HotSpot 25 (C2) the same ladder tops out around 11-12x at
+tess 4 / ~9x at tess 2; Graal's JIT optimizes these SoA/SIMD/dedup loops markedly better, and the gap
+widens with tessellation.
+
+The table's column is the per-structure median-wall-time harness (`./gradlew benchmark`); V16 was added
+later and measured with the steady-state aggregate-throughput harness instead, which reports higher
+absolute multiples (e.g. V11 at ~11.5x/26x CDK for tess 2/4 single-thread there), so V16's figures are
+quoted relative to V11 measured on the *same* harness rather than dropped into the column above (the two
+harnesses are not interchangeable; regenerate the whole column with one harness if you need V16 in it).
+
+**Champion: `DevSurfaceV16DirectNbr` (rung 16).** Two changes on V11, both bit-for-bit identical and
+both "less work, no added compute": (#2) the pruned neighbor source already stores neighbors in one CSR
+array, so read that array directly per atom instead of copying each slice into a reused `IntArrayList`
+per query (the copy, `IntArrayList.add`, was ~15% of single-thread CPU, ~2/3 of it this per-query copy);
+and (#3) resolve VdW radii through the process-wide cache on the engine side too. Measured vs V11
+(GraalVM 25, aggregate-throughput harness, median of 7): **1.03x** at tess 2 single-thread, **1.015x**
+at tess 2 / 16 threads, **1.01x** at tess 4 single-thread, **1.05x** at tess 4 / 16 threads - a small
+but consistent win at every point, and it does not regress anywhere. Enabling the copy-free path is
+opt-in (`directNeighbors` engine flag), so V11 and the others keep the copy path and stay byte-identical
+baselines; the V11 row re-measured at 8.11 vs 8.02 Matoms/s confirms the shared-engine change is neutral.
+
+**Side-branch (regression, kept as a documented negative result):** `DevSurfaceV15LeanNbr` (rung 15)
+applies the V6 bufferless two-pass build to V11's pruned neighbor source (#1) plus engine-side cached
+VdW radii (#3). It is bit-for-bit identical but **slower than V11**: ~0.86x at tess 2 single-thread,
+~0.88x at tess 2 / 16 threads, ~0.94x at tess 4 single-thread, ~1.00x (break-even) at tess 4 / 16
+threads. It is a side-branch off V11, not a rung: see lesson 12 for why a profile that flagged the
+neighbor build as the top hot method and top allocator still did not make allocation-reduction pay. V16
+is the same neighbor build attacked the right way (remove a redundant copy instead of trading compute
+for allocation), and it wins where V15 lost.
 
 ---
 
@@ -138,6 +164,27 @@ tessellation.
     allocation only wins under genuine GC/heap pressure (small heap, high core count, throughput
     collector). On a RAM-rich box it loses. Always confirm what the bottleneck actually is before
     optimizing for it.
+
+    **Confirmed a second time, against a profile that pointed the other way (`DevSurfaceV15LeanNbr`).**
+    Profiling V11 at tess 2 showed the *neighbor build* had become the dominant cost - 25% of CPU
+    single-thread, **44% (the hottest method) at 16 threads**, and 51-61% of all allocation (its `int[]`
+    edge buffers). The obvious read is "allocation-bound, so go bufferless." We applied the V6 two-pass
+    trick to the pruned source: it removed the edge buffers but doubled the per-pair distance pass, and
+    it **regressed 12-14% at tess 2** (both thread modes), breaking even only at tess 4 / 16 threads
+    where the occlusion scan dominates and GC pressure is highest. The lesson: a hot method that is also
+    the top allocator is *not* therefore allocation-bound. The neighbor build is CPU-bound on its
+    distance arithmetic; trading that arithmetic for less allocation loses even at 16 threads, because
+    (per lesson 11) the box is bandwidth/turbo-bound, not GC-bound. The right lever for that hot method
+    is to cut *work* with no added compute (e.g. eliminate the redundant per-query CSR-to-`IntArrayList`
+    copy), not to trade compute for allocation.
+
+    **The predicted lever worked (`DevSurfaceV16DirectNbr`).** That same CSR source was already holding
+    every atom's neighbors contiguously, but the `NeighborSource` contract forced a per-query copy of
+    each slice into a reused `IntArrayList`. Exposing the array directly (a `DirectNeighborSource`
+    capability + an opt-in engine flag) removed the copy with zero added arithmetic and won at every
+    point measured (1.01-1.05x V11), most at tess 4 / 16 threads. The contrast with V15 is the whole
+    lesson: attacking the same hot method by *removing redundant work* wins where attacking it by
+    *trading compute for allocation* lost. Diagnose what a hot method is bound by before optimizing it.
 
 13. **Intra-surface parallelism conflicts with across-item parallelism.** p2rank already runs one
     protein per core. Parallelizing a single surface across threads would oversubscribe and worsen the

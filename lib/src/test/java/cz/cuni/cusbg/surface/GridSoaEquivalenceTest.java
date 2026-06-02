@@ -196,6 +196,28 @@ class GridSoaEquivalenceTest {
                 new DevSurfaceV14ArenaFlat(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void devSurfaceV15LeanNbrMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // the two-pass CSR build keeps the same pruned neighbor set in the same per-atom order, and the
+        // cached VdW lookup returns the same radii; only allocation and a memoized lookup change, so the
+        // surface must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new DevSurfaceV15LeanNbr(s.load(), solvent, tess));
+    }
+
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void devSurfaceV16DirectNbrMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // reading the CSR adjacency directly yields the same neighbor indices in the same order the copy
+        // path produced, and the cached VdW lookup returns the same radii; only a per-query copy and a
+        // memoized lookup are removed, so the surface must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new DevSurfaceV16DirectNbr(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));

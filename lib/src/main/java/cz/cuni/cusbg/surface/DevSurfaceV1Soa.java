@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntFunction;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Structure-of-arrays (SoA) variant of {@link FasterNumericalSurface}.
@@ -72,6 +73,8 @@ public class DevSurfaceV1Soa implements MolecularSurface {
     private final TessellationProvider tessProvider;
     private final IntFunction<SurfacePointStore> storeFactory;
     private final boolean useArena;
+    private final ToDoubleFunction<IAtom> vdwRadius;
+    private final boolean directNeighbors;
 
     /** Per-thread reusable transient scratch, used only when {@code useArena} is set. */
     private static final ThreadLocal<EngineScratch> ARENA = ThreadLocal.withInitial(EngineScratch::new);
@@ -137,6 +140,39 @@ public class DevSurfaceV1Soa implements MolecularSurface {
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
                                   TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
                                   boolean useArena) {
+        this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory,
+                useArena, FasterNumericalSurface::getVdwRadius);
+    }
+
+    /**
+     * @param vdwRadius van der Waals radius lookup (without solvent), used by {@link #init()} to build
+     *        the per-atom expanded radii. Defaults to {@link FasterNumericalSurface#getVdwRadius} (a
+     *        per-atom periodic-table lookup, matching the original behavior); a variant may pass
+     *        {@link VdwRadiusCache#get} to memoize it per element symbol (optimization D, engine side).
+     *        Must return the same value either way, so the result is bit-for-bit unchanged. Fixed before
+     *        {@link #init()} like the other strategies.
+     */
+    protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
+                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
+                                  boolean useArena, ToDoubleFunction<IAtom> vdwRadius) {
+        this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory,
+                useArena, vdwRadius, false);
+    }
+
+    /**
+     * @param directNeighbors when true and the neighbor source is a {@link DirectNeighborSource}, the
+     *        per-atom neighbor pre-pass reads the source's CSR adjacency array directly instead of
+     *        copying each atom's slice into a reused {@code IntArrayList} per query (optimization #2).
+     *        Output-identical (same neighbor set, same order); only the per-query copy is removed. The
+     *        copy path (default {@code false}) is kept so existing variants stay byte-identical baselines
+     *        even when their source also implements {@link DirectNeighborSource}. See
+     *        {@link DevSurfaceV16DirectNbr}.
+     */
+    protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
+                                  TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
+                                  boolean useArena, ToDoubleFunction<IAtom> vdwRadius, boolean directNeighbors) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
         this.atoms = AtomContainerManipulator.getAtomArray(atomContainer);
@@ -146,6 +182,8 @@ public class DevSurfaceV1Soa implements MolecularSurface {
         this.tessProvider = tessProvider;
         this.storeFactory = storeFactory;
         this.useArena = useArena;
+        this.vdwRadius = vdwRadius;
+        this.directNeighbors = directNeighbors;
         init();
     }
 
@@ -169,7 +207,7 @@ public class DevSurfaceV1Soa implements MolecularSurface {
             Point3d p = atoms[i].getPoint3d();
             if (p == null) throw new IllegalArgumentException("One or more atoms had no 3D coordinate set");
             ax[i] = p.x; ay[i] = p.y; az[i] = p.z;
-            double r = FasterNumericalSurface.getVdwRadius(atoms[i]) + solventRadius;
+            double r = vdwRadius.applyAsDouble(atoms[i]) + solventRadius;
             atomRadius[i]  = r;
             atomRadius2[i] = r * r;
             if (r > maxRadius) maxRadius = r;
@@ -182,6 +220,13 @@ public class DevSurfaceV1Soa implements MolecularSurface {
         int pointDensity = tessel.pointDensity;
 
         NeighborSource neighbors = neighborFactory.create(atoms, ax, ay, az, maxRadius + solventRadius);
+
+        // optimization #2: when enabled and the source stores neighbors in a CSR array, read that array
+        // directly per atom instead of copying each slice into `nbr` per query. directSrc stays null for
+        // every other variant (flag off), so their neighbor path below is the unchanged copy path.
+        DirectNeighborSource directSrc = (directNeighbors && neighbors instanceof DirectNeighborSource)
+                ? (DirectNeighborSource) neighbors : null;
+        int[] adjArr = directSrc != null ? directSrc.adjacency() : null;
 
         this.store = storeFactory.apply(n);
         this.areas = new double[n];
@@ -198,9 +243,18 @@ public class DevSurfaceV1Soa implements MolecularSurface {
             double twiceTotalRadius = 2 * totalRadius;
             double atomX = ax[i], atomY = ay[i], atomZ = az[i];
 
-            nbr.clear();
-            neighbors.getNeighborsInto(i, nbr);
-            int numNeighbors = nbr.size();
+            int[] nb; int base; int numNeighbors;
+            if (directSrc != null) {                 // copy-free CSR slice (optimization #2)
+                base = directSrc.neighborStart(i);
+                numNeighbors = directSrc.neighborEnd(i) - base;
+                nb = adjArr;
+            } else {                                 // unchanged copy path (every other variant)
+                nbr.clear();
+                neighbors.getNeighborsInto(i, nbr);
+                base = 0;
+                numNeighbors = nbr.size();
+                nb = nbr.buffer;
+            }
 
             if (diffX.length < numNeighbors) {
                 diffX = new double[numNeighbors]; diffY = new double[numNeighbors];
@@ -208,9 +262,8 @@ public class DevSurfaceV1Soa implements MolecularSurface {
                 if (sc != null) { sc.diffX = diffX; sc.diffY = diffY; sc.diffZ = diffZ; sc.thresh = thresh; }
             }
 
-            int[] nb = nbr.buffer;
-            for (int k = 0; k < numNeighbors; k++) {
-                int j = nb[k];
+            for (int k = 0, p = base; k < numNeighbors; k++, p++) {
+                int j = nb[p];
                 double x12 = ax[j] - atomX;
                 double y12 = ay[j] - atomY;
                 double z12 = az[j] - atomZ;

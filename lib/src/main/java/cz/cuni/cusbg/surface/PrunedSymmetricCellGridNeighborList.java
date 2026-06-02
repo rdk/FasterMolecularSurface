@@ -25,7 +25,7 @@ import java.util.function.ToDoubleFunction;
  * NOT match them as a set - only the final surface output matches, bit-for-bit. Same dense-grid
  * precondition as {@link CellGrid}.
  */
-final class PrunedSymmetricCellGridNeighborList implements NeighborSource {
+final class PrunedSymmetricCellGridNeighborList implements DirectNeighborSource {
 
     private final int[] adjStart;   // prefix sums, length n+1
     private final int[] adj;        // neighbor indices grouped by atom, length 2*edgeCount
@@ -100,4 +100,15 @@ final class PrunedSymmetricCellGridNeighborList implements NeighborSource {
     public void getNeighborsInto(int i, IntArrayList out) {
         for (int p = adjStart[i], end = adjStart[i + 1]; p < end; p++) out.add(adj[p]);
     }
+
+    // --- DirectNeighborSource: copy-free access to the CSR adjacency (used by DevSurfaceV16DirectNbr) ---
+
+    @Override
+    public int[] adjacency() { return adj; }
+
+    @Override
+    public int neighborStart(int i) { return adjStart[i]; }
+
+    @Override
+    public int neighborEnd(int i) { return adjStart[i + 1]; }
 }
