@@ -15,9 +15,8 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        # Gradle 9.x requires JDK 17+ to run. The Java 11 toolchain (see lib/build.gradle)
-        # still targets Java 11 bytecode regardless of which JDK runs Gradle, so dropping 11
-        # here does not weaken the release-compatibility guarantee.
+        # The library targets Java 17 (toolchain in lib/build.gradle) and Gradle 9.x itself
+        # requires JDK 17+ to run, so Java 11 can neither run the build nor the artifact.
         java-version: [ '17', '21', '22' ]
 
     steps:
