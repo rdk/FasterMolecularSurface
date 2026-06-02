@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization step 3: {@link GridSoaNumericalSurface} plus neighbor ordering.
+ * Optimization step 3: {@link DevSurfaceV2Grid} plus neighbor ordering.
  *
  * <p>Before the occlusion loop, the per-atom neighbors are sorted by ascending {@code thresh}. The
  * occlusion test buries a tessellation point as soon as some neighbor satisfies
@@ -11,7 +11,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * (occludes more points), so visiting those first makes {@code collectPoints}' early-exit
  * {@code break} fire sooner, shortening the average inner loop.
  *
- * <p>Output is identical to {@link GridSoaNumericalSurface} / {@link FasterNumericalSurface}
+ * <p>Output is identical to {@link DevSurfaceV2Grid} / {@link FasterNumericalSurface}
  * bit-for-bit: a point is buried iff ANY neighbor buries it, so reordering the neighbor scan cannot
  * change which points survive, their coordinates, or the areas - only how early the scan stops.
  *
@@ -19,7 +19,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * supplied to the engine as a stateless {@link NeighborOrdering} through the constructor (not an
  * overridable method), so it is fixed before any computation runs.
  */
-public class OrderedGridSoaNumericalSurface extends GridSoaNumericalSurface {
+public class DevSurfaceV3Sorted extends DevSurfaceV2Grid {
 
     private static final int INSERTION_CUTOFF = 16;
 
@@ -27,11 +27,11 @@ public class OrderedGridSoaNumericalSurface extends GridSoaNumericalSurface {
     private static final NeighborOrdering BY_THRESH_ASCENDING =
             (diffX, diffY, diffZ, thresh, numNeighbors) -> qsort(diffX, diffY, diffZ, thresh, 0, numNeighbors - 1);
 
-    public OrderedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV3Sorted(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public OrderedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV3Sorted(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         super(atomContainer, solventRadius, tesslevel, BY_THRESH_ASCENDING);
     }
 

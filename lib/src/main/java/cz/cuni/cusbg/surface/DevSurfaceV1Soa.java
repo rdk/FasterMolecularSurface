@@ -51,10 +51,10 @@ import java.util.function.IntFunction;
  *
  * <p>This is optimization step 1 (SoA); the {@link NeighborList} itself is unchanged. The neighbor
  * index is supplied through a {@link NeighborSourceFactory} constructor argument, so a subclass (e.g.
- * {@link GridSoaNumericalSurface}) can swap in a different index without overriding a method during
+ * {@link DevSurfaceV2Grid}) can swap in a different index without overriding a method during
  * construction. All scratch derived from the atoms is local to {@link #init()} and not retained.
  */
-public class SoaNumericalSurface implements MolecularSurface {
+public class DevSurfaceV1Soa implements MolecularSurface {
 
     /** Default neighbor index: the hash-box {@link NeighborList} (identical sets to FasterNumericalSurface). */
     private static final NeighborSourceFactory DEFAULT_NEIGHBORS =
@@ -79,25 +79,25 @@ public class SoaNumericalSurface implements MolecularSurface {
     private SurfacePointStore store;
     private double[]          areas;
 
-    public SoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV1Soa(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         this(atomContainer, solventRadius, tesslevel, DEFAULT_NEIGHBORS, NeighborOrdering.NONE, OcclusionScan.STANDARD);
     }
 
     /**
      * @param neighborFactory supplies the neighbor index over the extracted coordinate arrays.
      * @param ordering        reorders the per-neighbor scratch before the occlusion loop (a no-op for
-     *        the base class; see {@link OrderedGridSoaNumericalSurface}).
+     *        the base class; see {@link DevSurfaceV3Sorted}).
      * @param scan            performs the occlusion test over each atom's tessellation points (the
-     *        reference loop for the base class; see {@link HintedGridSoaNumericalSurface}). All three
+     *        reference loop for the base class; see {@link DevSurfaceV4Hinted}). All three
      *        strategies are passed here (not via overridable methods) so they are fixed before
      *        {@link #init()} runs and cannot observe uninitialized subclass state; all must be
      *        stateless for the same reason.
      */
-    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+    protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan) {
         this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, TessellationProvider.FRESH);
     }
@@ -108,7 +108,7 @@ public class SoaNumericalSurface implements MolecularSurface {
      *        behavior; a variant may pass {@link TessellationProvider#CACHED} to reuse a process-wide
      *        shared tessellation. Like the other strategies it is fixed before {@link #init()} runs.
      */
-    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+    protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
                                   TessellationProvider tessProvider) {
         this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, ListSurfacePointStore::new);
@@ -120,7 +120,7 @@ public class SoaNumericalSurface implements MolecularSurface {
      *        variant may pass {@link FlatSurfacePointStore}{@code ::new} to store coordinates flat and
      *        materialize {@code Point3d} lazily. Fixed before {@link #init()} like the other strategies.
      */
-    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+    protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
                                   TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory) {
         this(atomContainer, solventRadius, tesslevel, neighborFactory, ordering, scan, tessProvider, storeFactory, false);
@@ -133,7 +133,7 @@ public class SoaNumericalSurface implements MolecularSurface {
      *        Requires a neighbor source that tolerates oversized coordinate arrays (takes the atom count
      *        explicitly) - the pruned source does.
      */
-    protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+    protected DevSurfaceV1Soa(IAtomContainer atomContainer, double solventRadius, int tesslevel,
                                   NeighborSourceFactory neighborFactory, NeighborOrdering ordering, OcclusionScan scan,
                                   TessellationProvider tessProvider, IntFunction<SurfacePointStore> storeFactory,
                                   boolean useArena) {

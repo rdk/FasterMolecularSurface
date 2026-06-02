@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization step 9: {@link DedupVectorizedSymmetricHintedGridSoaNumericalSurface} with the
+ * Optimization step 9: {@link DevSurfaceV9Dedup} with the
  * distinct-direction mapping cached process-wide instead of rebuilt per surface.
  *
  * <p>Same full stack (SoA, per-pair occlusion cutoff, last-occluder hint, 256-bit dedup SIMD scan) but
@@ -20,7 +20,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * (pruning still applies; dedup does not). Output is bit-for-bit identical to
  * {@link FasterNumericalSurface}. {@link #isVectorized()} reports the active path.
  */
-public class GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV10CachedMap extends DevSurfaceV1Soa {
 
     private static final boolean VECTOR_AVAILABLE = probeVector();
 
@@ -38,11 +38,11 @@ public class GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface extends
         return VECTOR_AVAILABLE;
     }
 
-    public GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV10CachedMap(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV10CachedMap(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         super(atomContainer, solventRadius, tesslevel,
                 (atoms, ax, ay, az, radius) -> new PrunedSymmetricCellGridNeighborList(atoms, ax, ay, az, radius, solventRadius),
                 NeighborOrdering.NONE,

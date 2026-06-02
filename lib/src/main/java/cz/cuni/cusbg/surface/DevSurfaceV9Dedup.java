@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization step 8: {@link PrunedVectorizedSymmetricHintedGridSoaNumericalSurface} plus tessellation
+ * Optimization step 8: {@link DevSurfaceV8Pruned} plus tessellation
  * direction deduplication. The full optimized stack: SoA engine, symmetric neighbor precompute, the
  * per-pair occlusion cutoff ({@link PrunedSymmetricCellGridNeighborList}), the last-occluder hint, and
  * a 256-bit SIMD scan that evaluates each <em>distinct</em> tessellation direction once
@@ -19,7 +19,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * {@link OcclusionScan#LAST_OCCLUDER_FIRST} (the pruning still applies, but the dedup does not).
  * {@link #isVectorized()} reports whether the dedup SIMD path is active.
  */
-public class DedupVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV9Dedup extends DevSurfaceV1Soa {
 
     /** Whether the dedup SIMD scan is usable on this JVM (probed once; the scan itself is per-build). */
     private static final boolean VECTOR_AVAILABLE = probeVector();
@@ -39,11 +39,11 @@ public class DedupVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNu
         return VECTOR_AVAILABLE;
     }
 
-    public DedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV9Dedup(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public DedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV9Dedup(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         // pruned neighbor factory captures solvent (no instance state); the dedup scan is created fresh
         // per surface because it memoizes per-build state. The new-scan branch is only taken when the
         // Vector API is available, so it never loads the incubator class on a JVM without it.

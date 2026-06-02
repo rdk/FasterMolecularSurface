@@ -5,7 +5,7 @@ import org.openscience.cdk.interfaces.IAtom;
 /**
  * Creates a {@link NeighborSource} over the already-extracted coordinate arrays.
  *
- * <p>Supplied to {@link SoaNumericalSurface} through its constructor (rather than via an
+ * <p>Supplied to {@link DevSurfaceV1Soa} through its constructor (rather than via an
  * overridable method called during construction), so the spatial-index choice is fixed before any
  * computation and a subclass cannot accidentally observe its own uninitialized state.
  */

@@ -32,7 +32,7 @@ class SurfaceBenchmark {
 
     /**
      * Times CDK's reference {@code NumericalSurface} and the optimized variants
-     * ({@link FasterNumericalSurface}, {@link SoaNumericalSurface}, {@link GridSoaNumericalSurface})
+     * ({@link FasterNumericalSurface}, {@link DevSurfaceV1Soa}, {@link DevSurfaceV2Grid})
      * on the same corpus, at both the library-default tessellation and p2rank's lower one. Add a
      * column when a new variant lands.
      */
@@ -41,7 +41,7 @@ class SurfaceBenchmark {
     @Test
     void benchmarkVariants() {
         System.out.printf("vectorized scan active (jdk.incubator.vector available): %s%n",
-                VectorizedSymmetricHintedGridSoaNumericalSurface.isVectorized());
+                DevSurfaceV7Simd.isVectorized());
 
         // per-level detail tables, collecting the mean speed-vs-CDK of each generator
         double[][] meanVsCdk = new double[TESS_LEVELS.length][]; // [level] -> {faster, soa, grid}
@@ -57,20 +57,20 @@ class SurfaceBenchmark {
         System.out.println("------------------------------------------------------");
         printSummaryRow("CDK NumericalSurface", meanVsCdk, -1);
         printSummaryRow("FasterNumericalSurface", meanVsCdk, 0);
-        printSummaryRow("SoaNumericalSurface", meanVsCdk, 1);
-        printSummaryRow("GridSoaNumericalSurface", meanVsCdk, 2);
-        printSummaryRow("OrderedGridSoaNumericalSurface", meanVsCdk, 3);
-        printSummaryRow("HintedGridSoaNumericalSurface", meanVsCdk, 4);
-        printSummaryRow("SymmetricHintedGridSoaNumericalSurface", meanVsCdk, 5);
-        printSummaryRow("LowAllocSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 6);
-        printSummaryRow("VectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 7);
-        printSummaryRow("PrunedVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 8);
-        printSummaryRow("DedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 9);
-        printSummaryRow("GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 10);
-        printSummaryRow("TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 11);
-        printSummaryRow("FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 12);
-        printSummaryRow("ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 13);
-        printSummaryRow("ArenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface", meanVsCdk, 14);
+        printSummaryRow("DevSurfaceV1Soa", meanVsCdk, 1);
+        printSummaryRow("DevSurfaceV2Grid", meanVsCdk, 2);
+        printSummaryRow("DevSurfaceV3Sorted", meanVsCdk, 3);
+        printSummaryRow("DevSurfaceV4Hinted", meanVsCdk, 4);
+        printSummaryRow("DevSurfaceV5Symmetric", meanVsCdk, 5);
+        printSummaryRow("DevSurfaceV6LowAlloc", meanVsCdk, 6);
+        printSummaryRow("DevSurfaceV7Simd", meanVsCdk, 7);
+        printSummaryRow("DevSurfaceV8Pruned", meanVsCdk, 8);
+        printSummaryRow("DevSurfaceV9Dedup", meanVsCdk, 9);
+        printSummaryRow("DevSurfaceV10CachedMap", meanVsCdk, 10);
+        printSummaryRow("DevSurfaceV11CachedTess", meanVsCdk, 11);
+        printSummaryRow("DevSurfaceV12Flat", meanVsCdk, 12);
+        printSummaryRow("DevSurfaceV13Arena", meanVsCdk, 13);
+        printSummaryRow("DevSurfaceV14ArenaFlat", meanVsCdk, 14);
         System.out.println();
     }
 
@@ -103,20 +103,20 @@ class SurfaceBenchmark {
                 });
             }
             double faster = medianMillis(() -> new FasterNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double soa    = medianMillis(() -> new SoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double grid   = medianMillis(() -> new GridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double ord    = medianMillis(() -> new OrderedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double hint   = medianMillis(() -> new HintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double sym    = medianMillis(() -> new SymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double symLA  = medianMillis(() -> new LowAllocSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double vec    = medianMillis(() -> new VectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double prn    = medianMillis(() -> new PrunedVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double ded    = medianMillis(() -> new DedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double gded   = medianMillis(() -> new GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double tcd    = medianMillis(() -> new TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double flat   = medianMillis(() -> new FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double atcd   = medianMillis(() -> new ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
-            double aflat  = medianMillis(() -> new ArenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(mol, solvent, tess).getTotalSurfaceArea());
+            double soa    = medianMillis(() -> new DevSurfaceV1Soa(mol, solvent, tess).getTotalSurfaceArea());
+            double grid   = medianMillis(() -> new DevSurfaceV2Grid(mol, solvent, tess).getTotalSurfaceArea());
+            double ord    = medianMillis(() -> new DevSurfaceV3Sorted(mol, solvent, tess).getTotalSurfaceArea());
+            double hint   = medianMillis(() -> new DevSurfaceV4Hinted(mol, solvent, tess).getTotalSurfaceArea());
+            double sym    = medianMillis(() -> new DevSurfaceV5Symmetric(mol, solvent, tess).getTotalSurfaceArea());
+            double symLA  = medianMillis(() -> new DevSurfaceV6LowAlloc(mol, solvent, tess).getTotalSurfaceArea());
+            double vec    = medianMillis(() -> new DevSurfaceV7Simd(mol, solvent, tess).getTotalSurfaceArea());
+            double prn    = medianMillis(() -> new DevSurfaceV8Pruned(mol, solvent, tess).getTotalSurfaceArea());
+            double ded    = medianMillis(() -> new DevSurfaceV9Dedup(mol, solvent, tess).getTotalSurfaceArea());
+            double gded   = medianMillis(() -> new DevSurfaceV10CachedMap(mol, solvent, tess).getTotalSurfaceArea());
+            double tcd    = medianMillis(() -> new DevSurfaceV11CachedTess(mol, solvent, tess).getTotalSurfaceArea());
+            double flat   = medianMillis(() -> new DevSurfaceV12Flat(mol, solvent, tess).getTotalSurfaceArea());
+            double atcd   = medianMillis(() -> new DevSurfaceV13Arena(mol, solvent, tess).getTotalSurfaceArea());
+            double aflat  = medianMillis(() -> new DevSurfaceV14ArenaFlat(mol, solvent, tess).getTotalSurfaceArea());
 
             String cdkStr = cdk == null ? "n/a(Co)" : String.format("%.1f", cdk);
             String tc = "-", fl = "-";

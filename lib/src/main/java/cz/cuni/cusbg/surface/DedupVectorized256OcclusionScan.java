@@ -25,7 +25,7 @@ import java.util.Map;
  * reuses (same array instances) for every atom of a build, so it is computed once per build and
  * memoized on this instance. The instance therefore carries per-build state and must NOT be shared
  * across builds/threads; the owning variant creates a fresh one per surface (see
- * {@link DedupVectorizedSymmetricHintedGridSoaNumericalSurface}).
+ * {@link DevSurfaceV9Dedup}).
  *
  * <p>The lane width is a {@code static final} 256-bit species (the Vector API requires a constant
  * species for JIT intrinsification; see {@link Vectorized256OcclusionScan}). Bit-for-bit identical to

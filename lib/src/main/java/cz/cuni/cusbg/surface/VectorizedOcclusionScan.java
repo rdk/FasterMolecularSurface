@@ -20,7 +20,7 @@ import jdk.incubator.vector.VectorSpecies;
  * arithmetic throughput differs.
  *
  * <p>This class is referenced only behind a guard (see
- * {@link VectorizedSymmetricHintedGridSoaNumericalSurface}); on a JVM without the incubator module its
+ * {@link DevSurfaceV7Simd}); on a JVM without the incubator module its
  * static initializer fails and the caller falls back to the scalar scan.
  */
 final class VectorizedOcclusionScan implements OcclusionScan {

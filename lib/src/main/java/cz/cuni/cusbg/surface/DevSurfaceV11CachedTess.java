@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization step 10: {@link GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface} that also
+ * Optimization step 10: {@link DevSurfaceV10CachedMap} that also
  * caches the tessellation arrays process-wide.
  *
  * <p>Even with the dedup mapping cached, the engine still rebuilt the tessellation itself
@@ -17,7 +17,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * the same values the engine would build). Scalar fallback when {@code jdk.incubator.vector} is absent.
  * {@link #isVectorized()} reports the active path.
  */
-public class TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV11CachedTess extends DevSurfaceV1Soa {
 
     private static final boolean VECTOR_AVAILABLE = probeVector();
 
@@ -35,11 +35,11 @@ public class TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurfa
         return VECTOR_AVAILABLE;
     }
 
-    public TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV11CachedTess(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV11CachedTess(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         super(atomContainer, solventRadius, tesslevel,
                 (atoms, ax, ay, az, radius) -> new PrunedSymmetricCellGridNeighborList(atoms, ax, ay, az, radius, solventRadius),
                 NeighborOrdering.NONE,

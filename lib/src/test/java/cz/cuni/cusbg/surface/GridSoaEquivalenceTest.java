@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * <ol>
  *   <li>{@link CellGridNeighborList} returns the same neighbor SET as the hash-box
  *       {@link NeighborList} for every atom (order may differ, set must not).</li>
- *   <li>{@link GridSoaNumericalSurface} reproduces {@link FasterNumericalSurface} bit-for-bit
+ *   <li>{@link DevSurfaceV2Grid} reproduces {@link FasterNumericalSurface} bit-for-bit
  *       (areas and surface-point coordinates).</li>
  * </ol>
  */
@@ -80,120 +80,120 @@ class GridSoaEquivalenceTest {
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void gridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV2GridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new GridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV2Grid(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void orderedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV3SortedMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // neighbor reordering must not change any result, at any tessellation level
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new OrderedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV3Sorted(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void hintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV4HintedMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // the last-occluder-first hint changes only the scan order, never the surviving set
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new HintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV4Hinted(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void symmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV5SymmetricMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // the symmetric neighbor precompute yields the same neighbor sets, so the result is unchanged
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new SymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV5Symmetric(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void lowAllocSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV6LowAllocMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // the lower-allocation two-pass symmetric precompute still yields the same neighbor sets
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new LowAllocSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV6LowAlloc(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void vectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV7SimdMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // the SIMD scan computes the dot product lane-for-lane (no FMA), so it must match bit-for-bit
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new VectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV7Simd(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void prunedVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV8PrunedMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // the per-pair occlusion cutoff only drops neighbors that provably never bury, so dropping them
         // (and the 256-bit scan) cannot change the surface: must match bit-for-bit
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new PrunedVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV8Pruned(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void dedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV9DedupMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // dedup scans each distinct direction once then re-expands in original point order: the surviving
         // multiset and its order are unchanged, so it must match the per-point scan bit-for-bit
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new DedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV9Dedup(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void globalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV10CachedMapMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // the process-wide-cached direction mapping is the same mapping, just computed once; result unchanged
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new GlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV10CachedMap(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void tessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV11CachedTessMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // caching the tessellation arrays holds the same values the engine would build; result unchanged
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV11CachedTess(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void flatTessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV12FlatMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // flat double[] point storage + cached VdW radii change only storage and a memoized lookup,
         // not the coordinates/areas, so the surface must match bit-for-bit
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV12Flat(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void arenaTessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV13ArenaMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         // reusing per-thread scratch across builds changes only allocation; buffers are fully overwritten
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV13Arena(s.load(), solvent, tess));
     }
 
     @ParameterizedTest(name = "{0} solvent={1} tess={2}")
     @MethodSource("structureConfigs")
-    void arenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+    void devSurfaceV14ArenaFlatMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         VariantEquivalence.assertBitForBit(s, solvent, tess,
                 new FasterNumericalSurface(s.load(), solvent, tess),
-                new ArenaFlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(s.load(), solvent, tess));
+                new DevSurfaceV14ArenaFlat(s.load(), solvent, tess));
     }
 
     private static Set<Integer> toSet(IntArrayList list) {

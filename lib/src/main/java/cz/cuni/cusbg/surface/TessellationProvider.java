@@ -1,7 +1,7 @@
 package cz.cuni.cusbg.surface;
 
 /**
- * Supplies the {@link Tessellation} for a level to {@link SoaNumericalSurface}. Passed to the engine
+ * Supplies the {@link Tessellation} for a level to {@link DevSurfaceV1Soa}. Passed to the engine
  * constructor (like the other strategies) so a variant can opt into a shared cached tessellation
  * without changing the default behavior of existing variants.
  *

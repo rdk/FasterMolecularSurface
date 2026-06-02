@@ -4,7 +4,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Direct equivalence: {@link SoaNumericalSurface} must reproduce {@link FasterNumericalSurface}
+ * Direct equivalence: {@link DevSurfaceV1Soa} must reproduce {@link FasterNumericalSurface}
  * bit-for-bit (it is a pure data-layout change). Asserts identical per-atom areas, identical total
  * point count, and identical surface-point coordinates across the test corpus and a range of
  * (solvent radius, tessellation level) configurations — including tess=2, p2rank's operating point.
@@ -19,7 +19,7 @@ class SoaEquivalenceTest {
     @MethodSource("structureConfigs")
     void soaMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
         FasterNumericalSurface ref = new FasterNumericalSurface(s.load(), solvent, tess);
-        SoaNumericalSurface    soa = new SoaNumericalSurface(s.load(), solvent, tess);
+        DevSurfaceV1Soa    soa = new DevSurfaceV1Soa(s.load(), solvent, tess);
         VariantEquivalence.assertBitForBit(s, solvent, tess, ref, soa);
     }
 }

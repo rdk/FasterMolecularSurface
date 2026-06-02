@@ -20,24 +20,37 @@ gives the per-atom area. The work is `O(atoms x tessPoints x neighbors)` with an
 
 ## The optimization ladder
 
-Each step is a separate class; the prior ones are left untouched as a measurable baseline. Mean
-speedup vs CDK `NumericalSurface` (GraalVM 25, this machine: 16 physical cores, AVX-512):
+Each step is a separate class; the prior ones are left untouched as a measurable baseline. The
+shipped production impl is `FasterNumericalSurface` (used by p2rank); every step we developed is an
+experimental class named `DevSurfaceV<n><Increment>` (prefix + version + the increment it adds), so
+the ladder is ordered and self-documenting without 9-qualifier class names. Mean speedup vs CDK
+`NumericalSurface` (GraalVM 25 single-thread, this machine: 16 physical cores, AVX-512):
 
-| variant | technique added | tess 4 | tess 3 | tess 2 (p2rank) |
-|---|---|---|---|---|
-| `FasterNumericalSurface` | reference optimized impl | 1.22x | 1.25x | 1.32x |
-| `SoaNumericalSurface` | structure-of-arrays scratch | 1.47x | 1.50x | 1.71x |
-| `GridSoaNumericalSurface` | flat cell-grid neighbor index | 1.46x | 1.55x | 1.87x |
-| `OrderedGridSoa…` | sort neighbors by threshold | 4.62x | 3.50x | 2.31x |
-| `HintedGridSoa…` | last-occluder hint (no sort) | 6.92x | 4.87x | 3.23x |
-| `SymmetricHintedGridSoa…` | compute each neighbor pair once | 7.13x | 5.34x | 3.67x |
-| `LowAllocSymmetricHintedGridSoa…` | bufferless two-pass build (GC tradeoff) | 6.89x | 5.10x | 3.42x |
-| `VectorizedSymmetricHintedGridSoa…` | SIMD occlusion scan (Vector API) | 10.68x | 7.24x | 4.61x |
-| `PrunedVectorizedSymmetricHintedGridSoa…` | per-pair occlusion cutoff + 256-bit SIMD | 13.16x | 8.85x | 5.72x |
-| `DedupVectorizedSymmetricHintedGridSoa…` | scan distinct tessellation directions | **18.61x** | **14.76x** | **10.25x** |
+| # | class | increment | tess 4 | tess 3 | tess 2 (p2rank) |
+|---|---|---|---|---|---|
+| - | `FasterNumericalSurface` | reference optimized impl (production) | 1.22x | 1.24x | 1.34x |
+| 1 | `DevSurfaceV1Soa` | structure-of-arrays scratch (also the shared engine) | 1.47x | 1.50x | 1.71x |
+| 2 | `DevSurfaceV2Grid` | flat cell-grid neighbor index | 1.46x | 1.55x | 1.87x |
+| 3 | `DevSurfaceV3Sorted` | sort neighbors by threshold | 4.62x | 3.50x | 2.31x |
+| 4 | `DevSurfaceV4Hinted` | last-occluder hint (drops the sort) | 6.92x | 4.87x | 3.23x |
+| 5 | `DevSurfaceV5Symmetric` | compute each neighbor pair once | 7.13x | 5.34x | 3.67x |
+| 6 | `DevSurfaceV6LowAlloc` | bufferless two-pass build (GC side-branch off V5) | 6.89x | 5.10x | 3.42x |
+| 7 | `DevSurfaceV7Simd` | SIMD occlusion scan (Vector API) + scalar fallback | 10.67x | 7.24x | 4.67x |
+| 8 | `DevSurfaceV8Pruned` | per-pair occlusion cutoff + 256-bit lanes | 12.19x | 8.86x | 5.78x |
+| 9 | `DevSurfaceV9Dedup` | scan distinct tessellation directions | 19.06x | 14.90x | 10.46x |
+| 10 | `DevSurfaceV10CachedMap` | cache the direction mapping process-wide | 20.10x | 14.22x | 10.53x |
+| 11 | `DevSurfaceV11CachedTess` | cache the tessellation arrays **(champion)** | **20.31x** | **15.38x** | **10.59x** |
+| 12 | `DevSurfaceV12Flat` | flat `double[]` point output (B) + cached VdW radii (D) | 18.30x | 14.91x | 10.64x |
+| 13 | `DevSurfaceV13Arena` | per-thread scratch arena (A) on V11 | 21.83x | 15.47x | 10.67x |
+| 14 | `DevSurfaceV14ArenaFlat` | per-thread scratch arena (A) on V12 | 19.72x | 15.03x | 10.69x |
 
-Net at p2rank's operating point (tess 2): **10.25x CDK**, about **2.2x** over the first vectorized
-variant, all bit-for-bit identical.
+Net at p2rank's operating point (tess 2): **~10.6x CDK** (champion V11), about **2.3x** over the first
+vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
+reductions: bit-exact and lower-allocation, but ~flat on single-thread speed here (the kernel is
+bandwidth/turbo-bound, not GC-bound), so V11 stays the single-thread champion and V14 is the leanest
+for throughput-at-scale. On HotSpot 25 (C2) the same ladder tops out around 11-12x at tess 4 / ~9x at
+tess 2; Graal's JIT optimizes these SoA/SIMD/dedup loops markedly better, and the gap widens with
+tessellation.
 
 ---
 
@@ -89,7 +102,7 @@ variant, all bit-for-bit identical.
    the neighbor count fed to the (dominant) scan. Bit-exact, with a one-line geometric proof.
 
 7. **A cheap hint beat an expensive sort.** Sorting each atom's neighbors by occlusion strength
-   (`OrderedGridSoa`) helped, but profiling showed the sort had become ~42% of runtime. Replacing it
+   (`DevSurfaceV3Sorted`) helped, but profiling showed the sort had become ~42% of runtime. Replacing it
    with a last-occluder hint (remember the neighbor that buried the previous point; test it first)
    captured the same early-exit benefit at near-zero cost, because consecutive tessellation points are
    spatially coherent. The hint variant beat the sort variant at every tessellation level.

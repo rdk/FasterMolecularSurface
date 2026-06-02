@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import com.carrotsearch.hppc.IntArrayList;
 
 /**
- * Reusable per-thread scratch for {@link SoaNumericalSurface} (optimization A). Holds the engine's
+ * Reusable per-thread scratch for {@link DevSurfaceV1Soa} (optimization A). Holds the engine's
  * transient per-build buffers - the extracted coordinate/radius arrays, the neighbor-query list, and
  * the per-neighbor {@code diff}/{@code thresh} arrays - so a worker thread reuses them across surface
  * builds instead of reallocating each time. Grown to the high-water mark and never shrunk.

@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization steps D + B on top of {@link TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface}:
+ * Optimization steps D + B on top of {@link DevSurfaceV11CachedTess}:
  * <ul>
  *   <li><b>B - flat point output.</b> Surface points are stored in a flat {@code double[]}
  *       ({@link FlatSurfacePointStore}) instead of one {@code Point3d} object per point;
@@ -19,7 +19,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * coordinates/areas; only storage and a memoized lookup change), so the result is identical to
  * {@link FasterNumericalSurface}. Scalar fallback when {@code jdk.incubator.vector} is absent.
  */
-public class FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV12Flat extends DevSurfaceV1Soa {
 
     private static final boolean VECTOR_AVAILABLE = probeVector();
 
@@ -37,11 +37,11 @@ public class FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalS
         return VECTOR_AVAILABLE;
     }
 
-    public FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV12Flat(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public FlatTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV12Flat(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         super(atomContainer, solventRadius, tesslevel,
                 (atoms, ax, ay, az, radius) -> new PrunedSymmetricCellGridNeighborList(atoms, ax, ay, az, radius, solventRadius, VdwRadiusCache::get),
                 NeighborOrdering.NONE,

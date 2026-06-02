@@ -1,7 +1,7 @@
 package cz.cuni.cusbg.surface;
 
 /**
- * Strategy for the occlusion scan in {@link SoaNumericalSurface}: given one atom's tessellation
+ * Strategy for the occlusion scan in {@link DevSurfaceV1Soa}: given one atom's tessellation
  * points and its per-neighbor scratch (the parallel {@code diffX/diffY/diffZ/thresh} arrays, first
  * {@code numNeighbors} entries), decide which tessellation points survive and append the surviving
  * surface points to {@code sink}.
@@ -13,7 +13,7 @@ package cz.cuni.cusbg.surface;
  * regardless of strategy — only <em>how</em> the scan reaches the verdict (scan order, early-exit
  * hints) may differ. See {@link #STANDARD}.
  *
- * <p>Like {@link NeighborOrdering}, the strategy is supplied to {@link SoaNumericalSurface} through
+ * <p>Like {@link NeighborOrdering}, the strategy is supplied to {@link DevSurfaceV1Soa} through
  * its constructor (not an overridable method), so it is fixed before any computation runs and never
  * dispatches on a partially-constructed subclass. Implementations must therefore be stateless across
  * atoms: any per-atom state (e.g. a last-occluder hint) must be a local of {@link #collect}, reset on
@@ -55,7 +55,7 @@ interface OcclusionScan {
      * points are spatially coherent, so that neighbor usually buries the next point too, exiting after a
      * single comparison; on a miss it falls back to the full in-order scan (which still tests the hinted
      * neighbor, so the result is unchanged). The hint is one {@code int} local per atom, reset on entry,
-     * so the scan is stateless across atoms. See {@link HintedGridSoaNumericalSurface}.
+     * so the scan is stateless across atoms. See {@link DevSurfaceV4Hinted}.
      */
     OcclusionScan LAST_OCCLUDER_FIRST = (tx, ty, tz, numTess, numNeighbors, diffX, diffY, diffZ, thresh,
                                          totalRadius, atomX, atomY, atomZ, sink) -> {

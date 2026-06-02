@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization step 6: {@link SymmetricHintedGridSoaNumericalSurface} with the occlusion scan - the
+ * Optimization step 6: {@link DevSurfaceV5Symmetric} with the occlusion scan - the
  * ~70% hot spot in that variant's profile - vectorized via the {@code jdk.incubator.vector} API. SoA
  * layout, symmetric neighbor precompute, and the last-occluder-first hint are all unchanged; only the
  * inner per-neighbor buried test runs a lane-width at a time (see {@link VectorizedOcclusionScan}).
@@ -15,14 +15,14 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * {@code ExceptionInInitializerError} from {@link VectorizedOcclusionScan}'s initializer), which is
  * caught once at class-load time and this variant transparently uses the scalar
  * {@link OcclusionScan#LAST_OCCLUDER_FIRST} instead. In that case it is byte-for-byte the same
- * computation as {@link SymmetricHintedGridSoaNumericalSurface}. {@link #isVectorized()} reports which
+ * computation as {@link DevSurfaceV5Symmetric}. {@link #isVectorized()} reports which
  * path is active.
  *
- * <p>Output is bit-for-bit identical to {@link SymmetricHintedGridSoaNumericalSurface} /
+ * <p>Output is bit-for-bit identical to {@link DevSurfaceV5Symmetric} /
  * {@link FasterNumericalSurface} on either path (the vectorized scan reproduces the scalar dot product
  * lane-for-lane, no FMA).
  */
-public class VectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV7Simd extends DevSurfaceV1Soa {
 
     private static final NeighborSourceFactory SYMMETRIC_GRID =
             (atoms, ax, ay, az, radius) -> new SymmetricCellGridNeighborList(ax, ay, az, radius);
@@ -46,11 +46,11 @@ public class VectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumeric
         return SCAN != OcclusionScan.LAST_OCCLUDER_FIRST;
     }
 
-    public VectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV7Simd(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public VectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV7Simd(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         super(atomContainer, solventRadius, tesslevel, SYMMETRIC_GRID, NeighborOrdering.NONE, SCAN);
     }
 }

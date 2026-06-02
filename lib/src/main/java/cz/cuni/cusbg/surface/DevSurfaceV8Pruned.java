@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization step 7: {@link VectorizedSymmetricHintedGridSoaNumericalSurface} plus the per-pair
+ * Optimization step 7: {@link DevSurfaceV7Simd} plus the per-pair
  * occlusion cutoff, and a 256-bit SIMD scan.
  *
  * <p>Two changes over the (unmodified) vectorized variant, both bit-for-bit output-preserving:
@@ -22,7 +22,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * (the pruning still applies). Output is bit-for-bit identical to {@link FasterNumericalSurface} on
  * either path. {@link #isVectorized()} reports the active scan path.
  */
-public class PrunedVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV8Pruned extends DevSurfaceV1Soa {
 
     private static final OcclusionScan SCAN = chooseScan();
 
@@ -39,11 +39,11 @@ public class PrunedVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaN
         return SCAN != OcclusionScan.LAST_OCCLUDER_FIRST;
     }
 
-    public PrunedVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV8Pruned(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public PrunedVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV8Pruned(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         // The neighbor factory captures the solvent radius so the pruned grid can compute per-atom
         // expanded radii; it captures no instance state, so it is safe to pass to super().
         super(atomContainer, solventRadius, tesslevel,

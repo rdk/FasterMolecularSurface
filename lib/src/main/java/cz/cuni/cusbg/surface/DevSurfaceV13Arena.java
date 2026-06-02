@@ -3,7 +3,7 @@ package cz.cuni.cusbg.surface;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
 /**
- * Optimization A applied to {@link TessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface}
+ * Optimization A applied to {@link DevSurfaceV11CachedTess}
  * (the previous best, list-based point store): the engine's transient per-build scratch
  * (coordinate/radius arrays, neighbor list, diff/thresh) is reused from a per-thread {@link EngineScratch}
  * arena instead of reallocated per surface.
@@ -14,7 +14,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * source's internal arrays are not pooled (the store is retained per surface; the source encapsulates
  * its arrays), so this pools the engine-side transient scratch only.
  */
-public class ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface extends SoaNumericalSurface {
+public class DevSurfaceV13Arena extends DevSurfaceV1Soa {
 
     private static final boolean VECTOR_AVAILABLE = probeVector();
 
@@ -31,11 +31,11 @@ public class ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumerical
         return VECTOR_AVAILABLE;
     }
 
-    public ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer) {
+    public DevSurfaceV13Arena(IAtomContainer atomContainer) {
         this(atomContainer, 1.4, 4);
     }
 
-    public ArenaTessCachedGlobalDedupVectorizedSymmetricHintedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
+    public DevSurfaceV13Arena(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
         super(atomContainer, solventRadius, tesslevel,
                 (atoms, ax, ay, az, radius) -> new PrunedSymmetricCellGridNeighborList(atoms, ax, ay, az, radius, solventRadius),
                 NeighborOrdering.NONE,
