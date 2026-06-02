@@ -43,7 +43,8 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 12 | `DevSurfaceV12Flat` | flat `double[]` point output (B) + cached VdW radii (D) | 18.30x | 14.91x | 10.64x |
 | 13 | `DevSurfaceV13Arena` | per-thread scratch arena (A) on V11 | 21.83x | 15.47x | 10.67x |
 | 14 | `DevSurfaceV14ArenaFlat` | per-thread scratch arena (A) on V12 | 19.72x | 15.03x | 10.69x |
-| 16 | `DevSurfaceV16DirectNbr` | copy-free CSR neighbor access (#2) + cached VdW, on V11 **(champion)** | see below | | |
+| 16 | `DevSurfaceV16DirectNbr` | copy-free CSR neighbor access (#2) + cached VdW, on V11 | see below | | |
+| 17 | `DevSurfaceV17PackedNbr` | packed single-`int[]` edge buffer, on V16 **(champion)** | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -58,16 +59,30 @@ absolute multiples (e.g. V11 at ~11.5x/26x CDK for tess 2/4 single-thread there)
 quoted relative to V11 measured on the *same* harness rather than dropped into the column above (the two
 harnesses are not interchangeable; regenerate the whole column with one harness if you need V16 in it).
 
-**Champion: `DevSurfaceV16DirectNbr` (rung 16).** Two changes on V11, both bit-for-bit identical and
-both "less work, no added compute": (#2) the pruned neighbor source already stores neighbors in one CSR
-array, so read that array directly per atom instead of copying each slice into a reused `IntArrayList`
-per query (the copy, `IntArrayList.add`, was ~15% of single-thread CPU, ~2/3 of it this per-query copy);
-and (#3) resolve VdW radii through the process-wide cache on the engine side too. Measured vs V11
-(GraalVM 25, aggregate-throughput harness, median of 7): **1.03x** at tess 2 single-thread, **1.015x**
-at tess 2 / 16 threads, **1.01x** at tess 4 single-thread, **1.05x** at tess 4 / 16 threads - a small
-but consistent win at every point, and it does not regress anywhere. Enabling the copy-free path is
-opt-in (`directNeighbors` engine flag), so V11 and the others keep the copy path and stay byte-identical
-baselines; the V11 row re-measured at 8.11 vs 8.02 Matoms/s confirms the shared-engine change is neutral.
+**Rung 16, `DevSurfaceV16DirectNbr`.** Two changes on V11, both bit-for-bit identical and both "less
+work, no added compute": (#2) the pruned neighbor source already stores neighbors in one CSR array, so
+read that array directly per atom instead of copying each slice into a reused `IntArrayList` per query
+(the copy, `IntArrayList.add`, was ~15% of single-thread CPU, ~2/3 of it this per-query copy); and (#3)
+resolve VdW radii through the process-wide cache on the engine side too. Measured vs V11 (GraalVM 25,
+aggregate-throughput harness, median of 7): **1.03x** at tess 2 single-thread, **1.015x** at tess 2 / 16
+threads, **1.01x** at tess 4 single-thread, **1.05x** at tess 4 / 16 threads - a small but consistent win
+everywhere, no regression. Enabling the copy-free path is opt-in (`directNeighbors` engine flag), so V11
+and the others keep the copy path and stay byte-identical baselines; the V11 row re-measured at 8.11 vs
+8.02 Matoms/s confirms the shared-engine change is neutral.
+
+**Champion: `DevSurfaceV17PackedNbr` (rung 17).** Profiling V16 showed that once the per-query copy was
+gone, the construction's *own* edge buffering became the top non-scan hot method: the pruned build
+records each kept edge with `edgeI.add(i); edgeJ.add(j)` into two HPPC `IntArrayList`s, which the V16
+profile put at ~25% of CPU single-thread and **~34% at 16 threads** (and most of the 63% `int[]`
+allocation). V17 packs each kept edge as an interleaved `(i, j)` pair into one cursor-managed `int[]`
+grown by doubling: one sequential write-stream instead of two, one capacity check per edge instead of
+two, no per-add wrapper overhead. It keeps the **single** distance pass, so unlike V15 it adds no
+arithmetic. Measured vs V16 (same harness, median of 7): **1.057x** at tess 2 single-thread, **1.074x**
+at tess 2 / 16 threads, **1.005x** at tess 4 single-thread, **1.017x** at tess 4 / 16 threads (vs V11:
+1.076x / 1.090x / 1.018x / 1.044x). The win is largest at tess 2 / 16 threads - exactly where the
+neighbor build is the biggest fraction and the bandwidth-bound regime rewards a single write-stream -
+and shrinks at tess 4 where the SAS scan dominates. No regression anywhere. This is the V16 profile's
+predicted #1 lever (make the edge buffer cheap, don't remove it), and it landed.
 
 **Side-branch (regression, kept as a documented negative result):** `DevSurfaceV15LeanNbr` (rung 15)
 applies the V6 bufferless two-pass build to V11's pruned neighbor source (#1) plus engine-side cached
@@ -185,6 +200,14 @@ for allocation), and it wins where V15 lost.
     point measured (1.01-1.05x V11), most at tess 4 / 16 threads. The contrast with V15 is the whole
     lesson: attacking the same hot method by *removing redundant work* wins where attacking it by
     *trading compute for allocation* lost. Diagnose what a hot method is bound by before optimizing it.
+
+    **And again, on the edge buffer itself (`DevSurfaceV17PackedNbr`).** Removing the copy exposed that
+    the build's own `edgeI.add(i); edgeJ.add(j)` into two `IntArrayList`s was now the top non-scan hot
+    method (~34% at 16 threads). V15 had tried to *remove* that buffer (two-pass, recompute distances)
+    and lost. V17 instead makes it *cheap* - one packed `int[]` with a manual cursor, single distance
+    pass - and wins (up to 1.074x V16 at tess 2 / 16 threads). Same hot method, third time: the buffer
+    was never the problem, the wrapper overhead and the second write-stream were. Make the necessary
+    work cheap; don't pay to avoid it with more compute.
 
 13. **Intra-surface parallelism conflicts with across-item parallelism.** p2rank already runs one
     protein per core. Parallelizing a single surface across threads would oversubscribe and worsen the

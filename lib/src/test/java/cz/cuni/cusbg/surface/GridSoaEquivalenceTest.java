@@ -218,6 +218,17 @@ class GridSoaEquivalenceTest {
                 new DevSurfaceV16DirectNbr(s.load(), solvent, tess));
     }
 
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void devSurfaceV17PackedNbrMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // packing kept edges into one int[] instead of two IntArrayLists changes only how the same edges
+        // are buffered before the CSR is assembled; the neighbor set, per-atom order, and radii are
+        // unchanged, so the surface must match bit-for-bit
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new DevSurfaceV17PackedNbr(s.load(), solvent, tess));
+    }
+
     private static Set<Integer> toSet(IntArrayList list) {
         Set<Integer> set = new HashSet<>();
         for (int k = 0; k < list.size(); k++) set.add(list.get(k));
