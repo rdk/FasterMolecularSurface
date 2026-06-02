@@ -76,8 +76,9 @@ tasks.register('benchmark', Test) {
     outputs.upToDateWhen { false }
 }
 
-jar {
-    archivesBaseName = 'faster-molecular-surface'
+base {
+    // 'archivesBaseName' on jar{} was removed in Gradle 9; the base extension's archivesName replaces it
+    archivesName = 'faster-molecular-surface'
 }
 
 
