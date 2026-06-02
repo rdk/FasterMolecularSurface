@@ -18,10 +18,20 @@ public class GridSoaNumericalSurface extends SoaNumericalSurface {
             (atoms, ax, ay, az, radius) -> new CellGridNeighborList(ax, ay, az, radius);
 
     public GridSoaNumericalSurface(IAtomContainer atomContainer) {
-        super(atomContainer, 1.4, 4, GRID);
+        this(atomContainer, 1.4, 4);
     }
 
     public GridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
-        super(atomContainer, solventRadius, tesslevel, GRID);
+        super(atomContainer, solventRadius, tesslevel, GRID, NeighborOrdering.NONE);
+    }
+
+    /**
+     * For subclasses that keep the flat cell grid but supply a neighbor ordering (e.g.
+     * {@link OrderedGridSoaNumericalSurface}). The ordering is passed up to the engine constructor
+     * rather than installed via an overridable method, so it is fixed before any computation runs.
+     */
+    protected GridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
+                                      NeighborOrdering ordering) {
+        super(atomContainer, solventRadius, tesslevel, GRID, ordering);
     }
 }

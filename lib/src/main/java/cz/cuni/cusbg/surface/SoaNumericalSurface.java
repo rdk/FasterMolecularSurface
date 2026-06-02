@@ -69,6 +69,7 @@ public class SoaNumericalSurface implements MolecularSurface {
     private final int     tesslevel;
     private final IAtom[] atoms;
     private final NeighborSourceFactory neighborFactory;
+    private final NeighborOrdering ordering;
 
     private List<Point3d>[] surfPoints;
     private double[]        areas;
@@ -78,20 +79,23 @@ public class SoaNumericalSurface implements MolecularSurface {
     }
 
     public SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
-        this(atomContainer, solventRadius, tesslevel, DEFAULT_NEIGHBORS);
+        this(atomContainer, solventRadius, tesslevel, DEFAULT_NEIGHBORS, NeighborOrdering.NONE);
     }
 
     /**
-     * @param neighborFactory supplies the neighbor index over the extracted coordinate arrays. Passed
-     *        here (not via an overridable method) so it is fixed before {@link #init()} runs and
-     *        cannot observe uninitialized subclass state.
+     * @param neighborFactory supplies the neighbor index over the extracted coordinate arrays.
+     * @param ordering        reorders the per-neighbor scratch before the occlusion loop (a no-op for
+     *        the base class; see {@link OrderedGridSoaNumericalSurface}). Both strategies are passed
+     *        here (not via overridable methods) so they are fixed before {@link #init()} runs and
+     *        cannot observe uninitialized subclass state; both must be stateless for the same reason.
      */
     protected SoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel,
-                                  NeighborSourceFactory neighborFactory) {
+                                  NeighborSourceFactory neighborFactory, NeighborOrdering ordering) {
         this.solventRadius = solventRadius;
         this.tesslevel = tesslevel;
         this.atoms = AtomContainerManipulator.getAtomArray(atomContainer);
         this.neighborFactory = neighborFactory;
+        this.ordering = ordering;
         init();
     }
 
@@ -162,10 +166,10 @@ public class SoaNumericalSurface implements MolecularSurface {
                 thresh[k] = (d2 + totalRadius2 - atomRadius2[j]) / twiceTotalRadius;
             }
 
-            // optional hook: reorder the per-neighbor scratch so collectPoints' early-exit fires
-            // sooner. A no-op by default. Reordering is output-preserving (a point is buried iff ANY
-            // neighbor buries it, so the order of the OR does not matter).
-            orderNeighbors(diffX, diffY, diffZ, thresh, numNeighbors);
+            // reorder the per-neighbor scratch so collectPoints' early-exit can fire sooner. A no-op
+            // by default; output-preserving regardless (a point is buried iff ANY neighbor buries it,
+            // so the order of the OR does not matter). See NeighborOrdering.
+            ordering.order(diffX, diffY, diffZ, thresh, numNeighbors);
 
             List<Point3d> points = reusedPointList;
             points.clear();
@@ -175,16 +179,6 @@ public class SoaNumericalSurface implements MolecularSurface {
             this.areas[i] = 4 * Math.PI * (totalRadius * totalRadius) * points.size() / pointDensity;
             this.surfPoints[i] = new ArrayList<>(points);
         }
-    }
-
-    /**
-     * Optionally reorder the per-neighbor scratch (parallel {@code diffX/diffY/diffZ/thresh}, first
-     * {@code numNeighbors} entries) before the occlusion loop. Default is a no-op. Implementations
-     * must permute all four arrays together and must NOT read instance state (this runs during
-     * construction). Reordering does not change the result, only how early collectPoints can break.
-     */
-    protected void orderNeighbors(double[] diffX, double[] diffY, double[] diffZ, double[] thresh, int numNeighbors) {
-        // no-op
     }
 
     private static void collectPoints(double[] tx, double[] ty, double[] tz, int numTess,

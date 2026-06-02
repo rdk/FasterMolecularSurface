@@ -15,24 +15,24 @@ import org.openscience.cdk.interfaces.IAtomContainer;
  * bit-for-bit: a point is buried iff ANY neighbor buries it, so reordering the neighbor scan cannot
  * change which points survive, their coordinates, or the areas - only how early the scan stops.
  *
- * <p>The sort is in-place over the four parallel scratch arrays and reads no instance state, so it
- * is safe to invoke from the superclass constructor (via the {@code orderNeighbors} hook).
+ * <p>The sort is in-place over the four parallel scratch arrays and reads no instance state. It is
+ * supplied to the engine as a stateless {@link NeighborOrdering} through the constructor (not an
+ * overridable method), so it is fixed before any computation runs.
  */
 public class OrderedGridSoaNumericalSurface extends GridSoaNumericalSurface {
 
     private static final int INSERTION_CUTOFF = 16;
 
+    /** Stateless ordering: sort the per-neighbor scratch ascending by {@code thresh}. */
+    private static final NeighborOrdering BY_THRESH_ASCENDING =
+            (diffX, diffY, diffZ, thresh, numNeighbors) -> qsort(diffX, diffY, diffZ, thresh, 0, numNeighbors - 1);
+
     public OrderedGridSoaNumericalSurface(IAtomContainer atomContainer) {
-        super(atomContainer);
+        this(atomContainer, 1.4, 4);
     }
 
     public OrderedGridSoaNumericalSurface(IAtomContainer atomContainer, double solventRadius, int tesslevel) {
-        super(atomContainer, solventRadius, tesslevel);
-    }
-
-    @Override
-    protected void orderNeighbors(double[] diffX, double[] diffY, double[] diffZ, double[] thresh, int numNeighbors) {
-        qsort(diffX, diffY, diffZ, thresh, 0, numNeighbors - 1);
+        super(atomContainer, solventRadius, tesslevel, BY_THRESH_ASCENDING);
     }
 
     /** In-place quicksort of the four parallel arrays, keyed ascending by {@code th}. Stateless. */

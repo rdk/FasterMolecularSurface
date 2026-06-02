@@ -57,33 +57,25 @@ class GridSoaEquivalenceTest {
         }
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("structures")
-    void gridMatchesFasterExactly(TestStructures.Structure s) {
-        assertMatchesFaster(s, new GridSoaNumericalSurface(s.load()));
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> structureConfigs() {
+        return TestStructures.structureConfigs();
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("structures")
-    void orderedGridMatchesFasterExactly(TestStructures.Structure s) {
-        // neighbor reordering must not change any result
-        assertMatchesFaster(s, new OrderedGridSoaNumericalSurface(s.load()));
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void gridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new GridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
-    private static void assertMatchesFaster(TestStructures.Structure s, MolecularSurface variant) {
-        FasterNumericalSurface ref = new FasterNumericalSurface(s.load());
-
-        double[] ra = ref.getAllSurfaceAreas(), ga = variant.getAllSurfaceAreas();
-        assertEquals(ra.length, ga.length, () -> s + " area array length");
-        for (int i = 0; i < ra.length; i++) assertEquals(ra[i], ga[i], 0.0, "per-atom area[" + i + "] for " + s);
-
-        Point3d[] rp = ref.getAllSurfacePoints(), gp = variant.getAllSurfacePoints();
-        assertEquals(rp.length, gp.length, () -> s + " total surface-point count");
-        for (int i = 0; i < rp.length; i++) {
-            assertEquals(rp[i].x, gp[i].x, 0.0, "point[" + i + "].x for " + s);
-            assertEquals(rp[i].y, gp[i].y, 0.0, "point[" + i + "].y for " + s);
-            assertEquals(rp[i].z, gp[i].z, 0.0, "point[" + i + "].z for " + s);
-        }
+    @ParameterizedTest(name = "{0} solvent={1} tess={2}")
+    @MethodSource("structureConfigs")
+    void orderedGridMatchesFasterExactly(TestStructures.Structure s, double solvent, int tess) {
+        // neighbor reordering must not change any result, at any tessellation level
+        VariantEquivalence.assertBitForBit(s, solvent, tess,
+                new FasterNumericalSurface(s.load(), solvent, tess),
+                new OrderedGridSoaNumericalSurface(s.load(), solvent, tess));
     }
 
     private static Set<Integer> toSet(IntArrayList list) {

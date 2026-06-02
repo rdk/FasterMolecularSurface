@@ -81,4 +81,23 @@ final class TestStructures {
     static Stream<Arguments> all() {
         return Stream.of(Structure.values()).map(Arguments::of);
     }
+
+    /**
+     * Parameter combinations for cross-variant equivalence: each {@code (structure, solventRadius,
+     * tessLevel)}. Covers the tessellation sweep at the standard 1.4 A solvent radius — including
+     * {@code tess=2}, p2rank's operating point — plus the Van der Waals path ({@code solvent=0}).
+     */
+    static Stream<Arguments> structureConfigs() {
+        double[][] configs = {
+                {1.4, 2}, {1.4, 3}, {1.4, 4},   // tessellation sweep at the standard solvent radius
+                {0.0, 4}                        // Van der Waals surface path
+        };
+        List<Arguments> out = new java.util.ArrayList<>();
+        for (Structure s : Structure.values()) {
+            for (double[] c : configs) {
+                out.add(Arguments.of(s, c[0], (int) c[1]));
+            }
+        }
+        return out.stream();
+    }
 }

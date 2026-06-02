@@ -15,6 +15,12 @@ import com.carrotsearch.hppc.IntArrayList;
  * probe per query), it uses a CSR cell layout ({@code cellStart[]} + {@code cellAtoms[]}, built with a
  * counting sort) over flat coordinate arrays. Lookups are O(1) array indexing, there is no per-query
  * allocation, and {@code IAtom.getPoint3d()} never appears in the hot loop.
+ *
+ * <p><b>Precondition:</b> this is a <em>dense</em> grid spanning the input's bounding box, so it suits
+ * spatially compact inputs (a molecular structure packs many atoms per cell, so {@code cells << atoms}).
+ * For sparse or outlier coordinates (e.g. a stray atom thousands of A away) the cell count explodes; the
+ * constructor fails loudly rather than allocating a pathologically large array. The sparse hash-box
+ * {@link NeighborList} has no such limit and is the right choice for those inputs.
  */
 final class CellGridNeighborList implements NeighborSource {
 
@@ -47,13 +53,17 @@ final class CellGridNeighborList implements NeighborSource {
         if (n == 0) { mnx = mny = mnz = 0; mxx = mxy = mxz = 0; }
         minX = mnx; minY = mny; minZ = mnz;
         nx = mxx - mnx + 1; ny = mxy - mny + 1; nz = mxz - mnz + 1;
-        // Guard the dense-grid size against int overflow. Molecular inputs occupy a bounded region,
-        // so a span this large is pathological; unlike the sparse hash-box NeighborList the dense grid
-        // cannot represent it, so fail loudly instead of silently allocating a wrong-sized array.
+        // Guard the dense-grid size. A spatially compact molecular input packs many atoms per cell, so
+        // cells << atoms; cells growing far beyond the atom count means sparse/outlier coordinates that
+        // a dense grid cannot represent economically. Fail loudly far below an OOM allocation instead of
+        // silently allocating hundreds of MB (or overflowing the int cell index). The sparse hash-box
+        // NeighborList handles such inputs; this grid intentionally does not.
         long cells = (long) nx * ny * nz;
-        if (cells > Integer.MAX_VALUE) {
+        long maxCells = Math.max(1L << 20, 64L * n);   // ~1M cell floor, else 64x the atom count
+        if (cells > maxCells || cells > Integer.MAX_VALUE - 8) {
             throw new IllegalArgumentException(
-                    "coordinate span too large for a dense cell grid: " + nx + "x" + ny + "x" + nz + " cells");
+                    "coordinate span too sparse for a dense cell grid: " + nx + "x" + ny + "x" + nz
+                            + " = " + cells + " cells for " + n + " atoms; use the hash-box NeighborList for sparse/outlier inputs");
         }
         int numCells = (int) cells;
 

@@ -49,6 +49,10 @@ tasks.named('test') {
     useJUnitPlatform {
         excludeTags 'benchmark'
     }
+    // The cross-variant equivalence tests build full surfaces (incl. the ~4800-atom 4HHB at
+    // tessellation level 4) for several variants across many parameter combinations, so the test
+    // JVM needs more than the default heap.
+    maxHeapSize = '2g'
     // Forward the golden-baseline regeneration flag to the test JVM when present.
     if (System.getProperty('golden.regenerate') != null) {
         systemProperty 'golden.regenerate', System.getProperty('golden.regenerate')
@@ -64,6 +68,7 @@ tasks.register('benchmark', Test) {
     useJUnitPlatform {
         includeTags 'benchmark'
     }
+    maxHeapSize = '2g'
     testLogging {
         showStandardStreams = true
     }
@@ -77,7 +82,7 @@ base {
 
 
 group = 'cz.cuni.cusbg'
-version = '1.1'
+version = '1.2'
 description = 'Java library with optimized implementation of NumericalSurface from CDK'
 
 

@@ -237,7 +237,7 @@ public class FasterNumericalSurface implements MolecularSurface {
             List<Point3d> points = atomicSurfacePoints(nbrlist, i, atoms[i], tessPoints, reusedPointList, reusedDataBuffer, neighborBuffer);
             translatePoints(i, points, pointDensity, atoms[i]);
         }
-        logger.info("Obtained points, areas and volumes");
+        logger.info("Obtained points and areas");
 
     }
 
