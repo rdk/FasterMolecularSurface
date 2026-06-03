@@ -45,7 +45,8 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 14 | `DevSurfaceV14ArenaFlat` | per-thread scratch arena (A) on V12 | 19.72x | 15.03x | 10.69x |
 | 16 | `DevSurfaceV16DirectNbr` | copy-free CSR neighbor access (#2) + cached VdW, on V11 | see below | | |
 | 17 | `DevSurfaceV17PackedNbr` | packed single-`int[]` edge buffer, on V16 | see below | | |
-| 18 | `DevSurfaceV18SortedCoords` | cell-sorted candidate coordinates (sequential read, no gather), on V17 **(champion)** | see below | | |
+| 18 | `DevSurfaceV18SortedCoords` | cell-sorted candidate coordinates (sequential read, no gather), on V17 **(compute champion)** | see below | | |
+| 19 | `DevSurfaceV19FlatStore` | V18 + flat `double[]` point store / zero-copy `surfacePointsXYZ()` (storage only, compute-neutral) | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -100,6 +101,19 @@ tess 4 where the SAS scan dominates. No regression. `CellGrid` is untouched (the
 sorted copy), so the other variants stay byte-identical baselines. This is the V17 profile's predicted
 lever (turn the candidate gather into a sequential stream), and the last random-access hot path in the
 build: at p2rank's tess 2 the ladder now reaches ~13x CDK single-thread / ~13.2x at 16 threads.
+
+**Rung 19, `DevSurfaceV19FlatStore`.** The first rung that changes point *storage* rather than the
+compute. The neighbor build, scan, and tessellation are V18's, bit-for-bit; the only change is swapping
+the `Point3d`-per-point list store for `FlatSurfacePointStore` (one flat `double[]`, `Point3d`
+materialized lazily). The point is the zero-copy `PackedSurfaceAccess` delivery path: a caller that
+consumes raw coordinates in bulk (p2rank turns each point into its own three-double `Point`) gets them
+via `surfacePointsXYZ()` with **no copy** and never allocates a `Point3d` or the `Point3d[]`. Through the
+`Point3d`-valued `MolecularSurface` accessors it behaves exactly like V18 (lazy materialization), so on
+this box it is **throughput-neutral** single-thread (bandwidth-bound, not GC-bound); its payoff is the
+lower allocation footprint and the zero-copy bulk path, an at-scale / GC-pressure win rather than a raw
+single-thread speedup. Output is bit-for-bit identical to `FasterNumericalSurface`. This builds out the
+"flat `double[]` surface-point output" idea formerly under Open ideas. V18 remains the *compute*
+champion; V19 is the recommended shape when bulk coordinate delivery matters.
 
 **Side-branch (regression, kept as a documented negative result):** `DevSurfaceV15LeanNbr` (rung 15)
 applies the V6 bufferless two-pass build to V11's pruned neighbor source (#1) plus engine-side cached
@@ -292,10 +306,12 @@ for allocation), and it wins where V15 lost.
 
 ## Open ideas (not yet built)
 
-- **Flat `double[]` surface-point output** instead of one `Point3d` per point (and the per-atom
-  `ArrayList` copy). Bit-exact (container only); cuts the dominant allocation and a downstream copy in
-  p2rank, which consumes coordinates in bulk and discards the `Point3d` objects. Mostly an
-  at-scale / GC-pressure win.
+- ~~**Flat `double[]` surface-point output**~~ **Built** as `DevSurfaceV19FlatStore` (and shipped in the
+  production `Packed`/`DistinctPacked` surfaces via `FlatSurfacePointStore` + `PackedSurfaceAccess`):
+  one flat `double[]` instead of one `Point3d` per point, with a zero-copy `surfacePointsXYZ()` bulk path
+  for consumers like p2rank that discard the `Point3d` objects. Bit-exact (container only). As predicted,
+  it is throughput-neutral single-thread here (bandwidth-bound, not GC-bound) — the win is allocation /
+  at-scale GC pressure. See rung 19 above.
 - **Global tessellation/template cache keyed by tessellation level**, including the dedup mapping, so
   thousands of builds share one immutable tessellation instead of rebuilding it each construction.
   Helps small proteins and batch runs most.

@@ -1,0 +1,93 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository. This is a single-person scientific
+project: optimize for correct, reproducible R&D, not team/process ceremony.
+
+## What this is
+
+A Java library with optimized implementations of CDK's `NumericalSurface`, behind the
+`MolecularSurface` interface. Coordinates: `group=cz.cuni.cusbg`, `artifactId=faster-molecular-surface`,
+`version=1.5`. Source in `lib/src/main/java/cz/cuni/cusbg/surface/`, tests alongside in
+`lib/src/test/java/cz/cuni/cusbg/surface/`. Baseline JVM is **Java 17**; the deployment/benchmark JVM is
+GraalVM 25. Recommended default surface is `DistinctPackedNumericalSurfaceV2` (see `README.md`); the full
+optimization history is `docs/performance-lessons.md`.
+
+## Build / test / benchmark
+
+- `./gradlew build` — assemble + check (compile + the default test scope).
+- `./gradlew test` — **default** test scope. It deliberately **excludes** the `DevSurfaceV*` per-rung
+  contract tests and the cross-variant equivalence harness (`GridSoaEquivalenceTest`, `SoaEquivalenceTest`)
+  — the bulk of the runtime. So a green `./gradlew test` does **not** mean the full ladder was verified.
+- `./unit-test.sh` — the curated default run (single fork). `./unit-test-all.sh` — the **full** suite
+  (`-PallTests -PtestForks=auto`): runs the DevSurface ladder + equivalence harness. Run the full suite
+  before claiming a rung result or after touching the shared engine / any surface.
+- Flags: `-PallTests` (include the ladder + equivalence tests), `-PnoVector` (drop
+  `jdk.incubator.vector` to exercise the scalar fallback), `-PtestForks=N|auto`,
+  `-PjavaToolchain=<ver>` (toolchain defaults to 17; CI overrides per matrix entry).
+- `./gradlew benchmark` — opt-in `@Tag("benchmark")` harness (excluded from `test`). Numbers and
+  methodology live in `docs/performance-lessons.md`.
+- Regenerate the golden baseline (only after an **intentional** algorithm change):
+  `./gradlew test --tests '*GoldenValuesGenerator' -Dgolden.regenerate=true`.
+
+**Vector API quirk (important).** Compilation *always* adds `--add-modules jdk.incubator.vector`; the
+test/run JVM adds it unless `-PnoVector`. When the module is absent the surfaces' `probeVector()` returns
+false and they take the scalar scan path — this is **expected**, not a regression. Do not "fix" a
+`-PnoVector` run that reports the scalar path.
+
+**CI / platform note.** The matrix spans Java 17/21/25/26, GraalVM, macOS, Windows, and a scalar-fallback
+job. The float-verdict path (`FloatNumericalSurface`) is intentionally JIT/platform-dependent and **not**
+bit-exact — small per-platform float differences there are by design, not bugs. The CDK-exact /
+area-exact surfaces are deterministic across the matrix.
+
+## Surface implementations are frozen artifacts
+
+Each concrete surface implementation is a **benchmarked, documented data point** whose measured
+performance/accuracy is recorded in `docs/performance-lessons.md` and the golden baseline. Keeping them
+side by side preserves the comparison; rewriting one invalidates its recorded benchmark.
+
+**The frozen set (do not edit their behavior or shape):**
+- The whole `DevSurfaceV1..V19` ladder (`DevSurfaceV*.java`), including the V15 negative-result branch.
+- The named production surfaces: `FasterNumericalSurface`, `PackedNumericalSurface`,
+  `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctFasterNumericalSurface`,
+  `FloatNumericalSurface`.
+- The supporting strategy implementations they wire together once benchmarked: the `*OcclusionScan`,
+  `*SurfacePointStore` / `*Store`, and neighbor-list/`CellGrid` classes.
+
+This set is greppable without inference: the ladder is the `DevSurfaceV*.java` glob, the named surfaces
+are the explicit list above, and a frozen surface's wired-in strategy classes (the specific
+`*OcclusionScan` / `*Store` / neighbor-list / `CellGrid` it composes) are frozen *with* it. When in
+doubt, a class that already has a measured row/paragraph in `docs/performance-lessons.md` is frozen.
+
+**The one nuance:** `DevSurfaceV1Soa` is *both* a frozen rung *and* the shared engine. Its **strategy
+seams** (the `NeighborSourceFactory` / `NeighborOrdering` / `OcclusionScan` / `TessellationProvider` /
+`SurfacePointStoreFactory` interfaces and the `useArena`/`vdwRadius`/`directNeighbors` flags it accepts)
+are the **sanctioned mutation point** — adding a *new* seam implementation or a new constructor wiring is
+how the ladder grows. What is frozen is each rung's *behavior*: do not change how an existing rung
+composes those seams, and keep engine changes additive (new flag/strategy defaulting to the old path) so
+existing rungs stay byte-identical.
+
+Therefore:
+
+- **Treat the frozen set as immutable.** No clean-ups, renames, dedup-against-another-variant, or
+  micro-optimizations. Add new work as a **new** `DevSurfaceVN`/named surface that inherits the shared
+  contract test — never by editing the existing best in place. This is how a new default supersedes the
+  old one (add the implementation, re-point the docs); the current default `DistinctPackedNumericalSurfaceV2`
+  is superseded the same way, not rewritten.
+- **Code reviews of frozen surfaces:** suppress *style / structure / micro-optimization* suggestions —
+  they're out of scope. **Always still surface** correctness, security, resource-leak, or
+  benchmark-invalidating defects — but propose the *fix as a new variant*, not an in-place edit to the
+  frozen class. Reviews of the editable engine seams and any non-frozen code remain fully in scope.
+
+## Adding a new variant
+
+Subclass `AbstractMolecularSurfaceContractTest` (return the variant from its two factory methods) to
+inherit the full behavioural battery, validate against `FasterNumericalSurface` (the bit-exact CDK
+oracle) and the pinned golden baseline, then run `./unit-test-all.sh`. Record the measured speedup in
+`docs/performance-lessons.md` (a new ladder row + paragraph). See `README.md` (Testing) for the
+contract-test details and `docs/performance-lessons.md` for the measurement methodology.
+
+## Conventions
+
+- Commit messages follow the existing `type: subject` style in the history (`docs:`, `ci:`,
+  `ci+test:`, or `Add <Class> — <result>` for a new surface). Do **not** add `Co-Authored-By` trailers.
+- Do not run `git push`, `./gradlew publish`, or create releases without being asked — those are manual.
