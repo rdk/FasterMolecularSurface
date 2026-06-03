@@ -99,6 +99,12 @@ oracle) and the pinned golden baseline, then run `./unit-test-all.sh`. Record th
 `docs/performance-lessons.md` (a new ladder row + paragraph). See `README.md` (Testing) for the
 contract-test details and `docs/performance-lessons.md` for the measurement methodology.
 
+**Before starting an optimization round**, read `docs/optimization-backlog.md`: it lists the untried
+ideas (with bit-exactness and effort notes) and — importantly — the **measurement gate** that must be
+rebuilt first. The last few rungs (V16–V18, all <1.1×) are inside the current benchmark's noise floor,
+so adopting JMH (`@Fork`), variance reporting, profiling, and machine pinning is a prerequisite for
+trusting the next round, not an afterthought.
+
 ## Conventions
 
 - Commit messages follow the existing `type: subject` style in the history (`docs:`, `ci:`,

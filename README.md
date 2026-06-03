@@ -72,7 +72,9 @@ results via the scalar fallback, only slower.
 The full optimization history (the `DevSurfaceV1..V19` ladder) and the measured rationale behind these
 choices are documented in [`docs/performance-lessons.md`](docs/performance-lessons.md). A proposed
 auto-selection factory and density-sampling API — **planned, not yet implemented** — is sketched in
-[`docs/surface-api-evolution-plan.md`](docs/surface-api-evolution-plan.md).
+[`docs/surface-api-evolution-plan.md`](docs/surface-api-evolution-plan.md). Untried optimization ideas,
+the measurement work that should precede them, and an external deep-research prompt are collected in
+[`docs/optimization-backlog.md`](docs/optimization-backlog.md).
 
 # Testing
 
