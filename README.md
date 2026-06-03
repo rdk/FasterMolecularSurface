@@ -3,8 +3,42 @@
 
 FasterMolecularSurface is a Java library with optimized implementation of NumericalSurface from CDK.
 
-The public surface API is captured by the `MolecularSurface` interface; `FasterNumericalSurface`
-is its current, optimized implementation.
+The public surface API is captured by the `MolecularSurface` interface.
+
+## Recommended implementation
+
+**`DistinctPackedNumericalSurfaceV2` is the current best implementation — use it by default.**
+
+It runs the fastest compute pipeline (cell-sorted pruned neighbour build, process-cached tessellation
+and van der Waals radii, copy-free CSR neighbour access) and emits **one point per distinct surviving
+direction** instead of the ~5.7× exact-coincident duplicates the icosahedral tessellation otherwise
+produces — so downstream consumers need no sparsification step. The per-atom and total **surface areas
+are bit-for-bit identical to `FasterNumericalSurface`** (the dropped duplicates are multiplicity-weighted
+into the area). The occlusion scan is SIMD-vectorised (256-bit) when the JVM provides the Vector API,
+with a scalar fallback otherwise.
+
+```java
+MolecularSurface surface = new DistinctPackedNumericalSurfaceV2(atomContainer, 1.4 /* solventRadius */, 4 /* tessLevel */);
+double area = surface.getTotalSurfaceArea();
+```
+
+Note: because it omits the coincident duplicates, it is deliberately **not point-set-identical to CDK's
+`NumericalSurface`** (the surviving point set equals what sparsification at the exact-coincidence
+distance produces; the areas are exact).
+
+## Other implementations
+
+- **`FasterNumericalSurface`** — the bit-exact reference: reproduces CDK's `NumericalSurface` point set
+  and areas exactly. Use it when byte-for-byte CDK equivalence (including the full point multiplicity)
+  is required; it is also the oracle the test suite checks every variant against.
+- **`PackedNumericalSurface`** — bit-exact full-multiplicity production surface with a zero-copy
+  `surfacePointsXYZ()` delivery path; use when CDK-identical output *and* raw-coordinate bulk access are
+  both wanted.
+- **`FloatNumericalSurface`** — single-precision-verdict variant of the recommended surface; ~1.05–1.14×
+  faster on GraalVM (neutral on HotSpot) at a small, tolerance-bounded accuracy cost. Not bit-exact.
+
+The full optimization history (the `DevSurfaceV1..V19` ladder) and the measured rationale behind these
+choices are documented in [`docs/performance-lessons.md`](docs/performance-lessons.md).
 
 # Testing
 
