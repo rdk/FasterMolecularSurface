@@ -30,11 +30,19 @@ final class DirectionMapping {
     private static final ConcurrentHashMap<Integer, DirectionMapping> CACHE = new ConcurrentHashMap<>();
 
     final double[] ddx, ddy, ddz;   // distinct direction unit vectors, length numDir
+    final float[] fddx, fddy, fddz; // single-precision copies for the float-verdict scan (see Float256WeightedDedupOcclusionScan)
     final int[] mult;               // mult[d] = number of tessellation points mapping to direction d
     final int numDir;
 
     private DirectionMapping(double[] ddx, double[] ddy, double[] ddz, int[] mult, int numDir) {
         this.ddx = ddx; this.ddy = ddy; this.ddz = ddz; this.mult = mult; this.numDir = numDir;
+        this.fddx = toFloat(ddx); this.fddy = toFloat(ddy); this.fddz = toFloat(ddz);
+    }
+
+    private static float[] toFloat(double[] a) {
+        float[] f = new float[a.length];
+        for (int i = 0; i < a.length; i++) f[i] = (float) a[i];
+        return f;
     }
 
     /** Resolve the mapping for {@code tesslevel} from the process-wide cache, building it once on a miss. */
