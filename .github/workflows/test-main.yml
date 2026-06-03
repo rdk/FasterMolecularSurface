@@ -120,3 +120,41 @@ jobs:
             lib/build/reports/tests/
             lib/build/test-results/
           retention-days: 7
+
+  # Full suite (-PallTests): the per-rung DevSurfaceV* contract tests AND the cross-variant equivalence
+  # harness that bit-for-bit re-verifies every rung against FasterNumericalSurface. The default `test`
+  # scope (and thus every matrix job above) excludes these, so without this job the project's central
+  # correctness guarantee would be verified locally only. Slow (the equivalence harness dominates), so
+  # it runs once, on the primary JVM.
+  full-suite:
+    name: Test (full suite, -PallTests)
+    needs: validate-wrapper
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run the full test suite
+        run: >-
+          ./gradlew test -PallTests -PtestForks=auto
+          -PjavaToolchain=25
+          -Dorg.gradle.java.installations.auto-download=false
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-reports-full-suite
+          path: |
+            lib/build/reports/tests/
+            lib/build/test-results/
+          retention-days: 7

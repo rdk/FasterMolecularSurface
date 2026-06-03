@@ -43,8 +43,11 @@ class GoldenValuesGenerator {
                     s.pdbId, atomCount, surfaceAtomCount, totalPoints, totalArea));
         }
 
-        // Test working directory is the module dir (lib/); write into the source resources.
-        Path out = Paths.get("src/test/resources/golden/surface-golden.csv");
+        // Write into the source resources. Prefer the absolute dir forwarded by the build
+        // (-Dgolden.resourcesDir); fall back to the module-relative path when run via Gradle from lib/.
+        String resourcesDir = System.getProperty("golden.resourcesDir");
+        Path out = (resourcesDir != null ? Paths.get(resourcesDir, "golden", "surface-golden.csv")
+                                          : Paths.get("src/test/resources/golden/surface-golden.csv"));
         Files.createDirectories(out.getParent());
         Files.write(out, lines, StandardCharsets.UTF_8);
         System.out.println("Wrote golden baseline to " + out.toAbsolutePath());

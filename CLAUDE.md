@@ -20,7 +20,9 @@ optimization history is `docs/performance-lessons.md`.
   — the bulk of the runtime. So a green `./gradlew test` does **not** mean the full ladder was verified.
 - `./unit-test.sh` — the curated default run (single fork). `./unit-test-all.sh` — the **full** suite
   (`-PallTests -PtestForks=auto`): runs the DevSurface ladder + equivalence harness. Run the full suite
-  before claiming a rung result or after touching the shared engine / any surface.
+  **locally before committing** a shared-engine / rung / surface change — it's the fast feedback loop for
+  the equivalence guarantee. CI also runs it (the `full-suite` job), so it is the backstop too, but don't
+  rely on CI to first tell you an engine change broke bit-exactness.
 - Flags: `-PallTests` (include the ladder + equivalence tests), `-PnoVector` (drop
   `jdk.incubator.vector` to exercise the scalar fallback), `-PtestForks=N|auto`,
   `-PjavaToolchain=<ver>` (toolchain defaults to 17; CI overrides per matrix entry).
@@ -34,8 +36,8 @@ test/run JVM adds it unless `-PnoVector`. When the module is absent the surfaces
 false and they take the scalar scan path — this is **expected**, not a regression. Do not "fix" a
 `-PnoVector` run that reports the scalar path.
 
-**CI / platform note.** The matrix spans Java 17/21/25/26, GraalVM, macOS, Windows, and a scalar-fallback
-job. The float-verdict path (`FloatNumericalSurface`) is intentionally JIT/platform-dependent and **not**
+**CI / platform note.** The matrix spans Java 17/21/25/26, GraalVM, macOS, Windows, a scalar-fallback
+job, and a `full-suite` (`-PallTests`) job that runs the ladder + equivalence harness. The float-verdict path (`FloatNumericalSurface`) is intentionally JIT/platform-dependent and **not**
 bit-exact — small per-platform float differences there are by design, not bugs. The CDK-exact /
 area-exact surfaces are deterministic across the matrix.
 
@@ -50,13 +52,24 @@ side by side preserves the comparison; rewriting one invalidates its recorded be
 - The named production surfaces: `FasterNumericalSurface`, `PackedNumericalSurface`,
   `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctFasterNumericalSurface`,
   `FloatNumericalSurface`.
-- The supporting strategy implementations they wire together once benchmarked: the `*OcclusionScan`,
-  `*SurfacePointStore` / `*Store`, and neighbor-list/`CellGrid` classes.
+- The concrete strategy implementations they wire together once benchmarked (see the closure rule below).
 
-This set is greppable without inference: the ladder is the `DevSurfaceV*.java` glob, the named surfaces
-are the explicit list above, and a frozen surface's wired-in strategy classes (the specific
-`*OcclusionScan` / `*Store` / neighbor-list / `CellGrid` it composes) are frozen *with* it. When in
-doubt, a class that already has a measured row/paragraph in `docs/performance-lessons.md` is frozen.
+**Classification rule — use this, NOT "is it in the perf doc".** A concrete class is frozen iff it is
+constructed (`new`) or method-referenced (`::`) from a frozen surface's constructor — i.e. the transitive
+closure out of the `DevSurfaceV*` rungs and the named surfaces above. Concretely that covers every
+concrete `*OcclusionScan` (e.g. `Vectorized256WeightedDedupOcclusionScan`, `WeightedDedupOcclusionScan`,
+`DedupVectorized256OcclusionScan`, `GlobalDedup*`, `Float256WeightedDedupOcclusionScan`), every
+`*SurfacePointStore`/`*Store` (`FlatSurfacePointStore`, `DistinctFlatSurfacePointStore[V2]`,
+`ListSurfacePointStore`), every `*CellGridNeighborList` / `CellGrid` / `DirectNeighborSource`, and the
+shared helpers (`VdwRadiusCache`, `DirectionMapping`, `EngineScratch`, `Tessellation`). **Do not** rely on
+"has a row in `docs/performance-lessons.md`" — most of these strategy classes have no doc row yet are wired
+into the frozen default surface, so editing them silently invalidates its benchmark.
+
+**What is NOT frozen — the seam *interfaces*** are the extension points: `MolecularSurface`, `OcclusionScan`,
+`NeighborSource` / `NeighborSourceFactory`, `NeighborOrdering`, `SurfacePointStore` /
+`SurfacePointStoreFactory`, `TessellationProvider`, `PackedSurfaceAccess`, `SurfacePointSink`. New work adds
+a *new* concrete implementation of a seam (plus a new surface that wires it) — never an in-place edit to an
+existing frozen concrete class.
 
 **The one nuance:** `DevSurfaceV1Soa` is *both* a frozen rung *and* the shared engine. Its **strategy
 seams** (the `NeighborSourceFactory` / `NeighborOrdering` / `OcclusionScan` / `TessellationProvider` /
@@ -89,5 +102,5 @@ contract-test details and `docs/performance-lessons.md` for the measurement meth
 ## Conventions
 
 - Commit messages follow the existing `type: subject` style in the history (`docs:`, `ci:`,
-  `ci+test:`, or `Add <Class> — <result>` for a new surface). Do **not** add `Co-Authored-By` trailers.
+  `ci+test:`, or `Add <Class>: <result>` for a new surface). Do **not** add `Co-Authored-By` trailers.
 - Do not run `git push`, `./gradlew publish`, or create releases without being asked — those are manual.

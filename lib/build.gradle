@@ -29,18 +29,21 @@ dependencies {
 
     implementation 'com.carrotsearch:hppc:0.10.0'
 
-    // CDK on the PUBLIC API surface, so it lands on consumers' compile classpath (not just ours):
-    // IAtomContainer/IAtom (constructor args + getAtomSurfaceMap()) live in cdk-interfaces, and
-    // CDKException (thrown by getSurfacePoints/getSurfaceArea) lives in cdk-core. Declaring these
-    // `api` lets a downstream project call `new DistinctPackedNumericalSurfaceV2(atomContainer)`
-    // without redeclaring CDK itself and risking a version-skew NoSuchMethodError.
-    api 'org.openscience.cdk:cdk-interfaces:2.11'                  // IAtom, IAtomContainer (public API)
-    api 'org.openscience.cdk:cdk-core:2.11'                        // CDKException (public API)
+    // CDK on the PUBLIC API surface, so it lands on consumers' compile classpath (not just ours).
+    // cdk-interfaces alone provides every CDK type that appears in a public signature - IAtom /
+    // IAtomContainer (constructor args + getAtomSurfaceMap()) and CDKException (thrown by
+    // getSurfacePoints/getSurfaceArea) - and it transitively pulls javax.vecmath, the home of Point3d
+    // (the surface-point type returned across the API). Declaring it `api` lets a downstream project call
+    // `new DistinctPackedNumericalSurfaceV2(atomContainer)` and read Point3d results without redeclaring
+    // CDK itself and risking a version-skew NoSuchMethodError.
+    api 'org.openscience.cdk:cdk-interfaces:2.11'                 // IAtom, IAtomContainer, CDKException, +vecmath/Point3d (public API)
 
     // CDK used only internally (never in a public signature), kept `implementation` to stay off
-    // consumers' compile classpath: NumericalSurface + Tessellate (cdk-qsarmolecular), Atom (cdk-silent).
-    implementation 'org.openscience.cdk:cdk-qsarmolecular:2.11'   // NumericalSurface, Tessellate (internal)
-    implementation 'org.openscience.cdk:cdk-silent:2.11'          // Atom (internal)
+    // consumers' compile classpath: PeriodicTable (cdk-core), NumericalSurface + Tessellate
+    // (cdk-qsarmolecular), the concrete Atom impl (cdk-silent).
+    implementation 'org.openscience.cdk:cdk-core:2.11'           // PeriodicTable (internal)
+    implementation 'org.openscience.cdk:cdk-qsarmolecular:2.11'  // NumericalSurface, Tessellate (internal)
+    implementation 'org.openscience.cdk:cdk-silent:2.11'         // Atom (internal)
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -50,7 +53,9 @@ java {
         // so the build compiles and runs the tests on each target JVM (incl. GraalVM); without this the
         // pinned toolchain would run every matrix entry on 17. The published artifact is built with the
         // default 17 toolchain by the publish workflow.
-        languageVersion = JavaLanguageVersion.of((findProperty('javaToolchain') ?: '17').toString() as int)
+        // Take the leading major component so a full version string (e.g. '21.0.1') doesn't throw;
+        // CI passes bare majors ('17'/'21'/'25'/'26'), which pass through unchanged.
+        languageVersion = JavaLanguageVersion.of((findProperty('javaToolchain') ?: '17').toString().tokenize('.')[0])
     }
 }
 
@@ -97,9 +102,12 @@ tasks.named('test') {
     maxParallelForks = testForks == 'auto'
             ? Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
             : testForks.toInteger()
-    // Forward the golden-baseline regeneration flag to the test JVM when present.
+    // Forward the golden-baseline regeneration flag to the test JVM when present, along with the
+    // absolute test-resources dir so the generator writes the CSV to the right place regardless of the
+    // test working directory (e.g. when launched from an IDE rooted at the repo, not the lib/ module).
     if (System.getProperty('golden.regenerate') != null) {
         systemProperty 'golden.regenerate', System.getProperty('golden.regenerate')
+        systemProperty 'golden.resourcesDir', file('src/test/resources').absolutePath
     }
 }
 

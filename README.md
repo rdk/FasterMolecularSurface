@@ -11,8 +11,8 @@ The public surface API is captured by the `MolecularSurface` interface.
 
 It runs the fastest compute pipeline (cell-sorted pruned neighbour build, process-cached tessellation
 and van der Waals radii, copy-free CSR neighbour access) and emits **one point per distinct surviving
-direction** instead of the ~5.7× exact-coincident duplicates the icosahedral tessellation otherwise
-produces — so downstream consumers need no sparsification step. The per-atom and total **surface areas
+direction** instead of the ~5.7–6× exact-coincident duplicates the icosahedral tessellation otherwise
+produces (the factor rises with tessellation level) — so downstream consumers need no sparsification step. The per-atom and total **surface areas
 are bit-for-bit identical to `FasterNumericalSurface`** (the dropped duplicates are multiplicity-weighted
 into the area). The occlusion scan is SIMD-vectorised (256-bit) when the JVM provides the Vector API,
 with a scalar fallback otherwise.
@@ -26,6 +26,34 @@ Note: because it omits the coincident duplicates, it is deliberately **not point
 `NumericalSurface`** (the surviving point set equals what sparsification at the exact-coincidence
 distance produces; the areas are exact).
 
+### Zero-copy bulk coordinate access
+
+A consumer that reads raw coordinates in bulk (e.g. p2rank, which turns each point into its own
+primitive triple) should use the `PackedSurfaceAccess` capability instead of `getAllSurfacePoints()`:
+it exposes the points as one flat `double[]` with no per-point `Point3d` allocation. The
+recommended/packed surfaces implement it; detect support with `instanceof`:
+
+```java
+if (surface instanceof PackedSurfaceAccess packed) {
+    double[] xyz = packed.surfacePointsXYZ();   // x0,y0,z0, x1,y1,z1, ...  (buffer may be over-allocated)
+    int n = packed.surfacePointCount();         // valid data is exactly xyz[0 .. 3*n)
+    for (int i = 0; i < n; i++) {
+        double x = xyz[3*i], y = xyz[3*i + 1], z = xyz[3*i + 2];
+        // ...
+    }
+}
+```
+The array is returned by reference for zero copy — treat it as read-only and do not retain it beyond
+the surface's lifetime.
+
+### Runtime note: the SIMD path needs an incubator module
+
+The occlusion scan is SIMD-vectorised through the incubator Vector API, and the published artifact
+cannot carry the required JVM flag. To get the vectorised path — and the speedups recorded in
+[`docs/performance-lessons.md`](docs/performance-lessons.md) — the **consuming** application must launch
+its JVM with `--add-modules jdk.incubator.vector`. Without it the surfaces still produce identical
+results via the scalar fallback, only slower.
+
 ## Other implementations
 
 - **`FasterNumericalSurface`** — the bit-exact reference: reproduces CDK's `NumericalSurface` point set
@@ -36,6 +64,10 @@ distance produces; the areas are exact).
   both wanted.
 - **`FloatNumericalSurface`** — single-precision-verdict variant of the recommended surface; ~1.05–1.14×
   faster on GraalVM (neutral on HotSpot) at a small, tolerance-bounded accuracy cost. Not bit-exact.
+- **`DistinctFasterNumericalSurface`** — the `FasterNumericalSurface`-based counterpart of the distinct
+  surfaces: the same CDK-exact pipeline as `FasterNumericalSurface`, but emitting one point per distinct
+  direction (areas bit-for-bit identical, point set deduplicated). Primarily a reference/cross-check for
+  the faster `DistinctPacked*` engine path.
 
 The full optimization history (the `DevSurfaceV1..V19` ladder) and the measured rationale behind these
 choices are documented in [`docs/performance-lessons.md`](docs/performance-lessons.md). A proposed
@@ -54,8 +86,8 @@ algorithm. It runs over a corpus of ten representative PDB structures (327–477
   subclassing it and returning the variant from the two factory methods (see
   `FasterNumericalSurfaceContractTest`).
 - **`CdkEquivalenceTest`** — the oracle: proves `FasterNumericalSurface` reproduces CDK's
-  reference `NumericalSurface` within `1e-6` (3CI3 excluded — CDK throws on its cobalt atom, the
-  gap the VdW fallback addresses).
+  reference `NumericalSurface` within `1e-6` (3CI3 excluded — CDK throws an NPE on its cobalt atom,
+  whose van der Waals radius is null in CDK; the gap the VdW fallback addresses).
 - **`GoldenValues` / `surface-golden.csv`** — pinned per-structure baseline. Regenerate after an
   intentional algorithm change:
   ```
