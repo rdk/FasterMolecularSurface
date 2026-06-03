@@ -105,7 +105,7 @@ build: at p2rank's tess 2 the ladder now reaches ~13x CDK single-thread / ~13.2x
 applies the V6 bufferless two-pass build to V11's pruned neighbor source (#1) plus engine-side cached
 VdW radii (#3). It is bit-for-bit identical but **slower than V11**: ~0.86x at tess 2 single-thread,
 ~0.88x at tess 2 / 16 threads, ~0.94x at tess 4 single-thread, ~1.00x (break-even) at tess 4 / 16
-threads. It is a side-branch off V11, not a rung: see lesson 12 for why a profile that flagged the
+threads. It is a side-branch off V11, not a rung: see lesson 13 for why a profile that flagged the
 neighbor build as the top hot method and top allocator still did not make allocation-reduction pay. V16
 is the same neighbor build attacked the right way (remove a redundant copy instead of trading compute
 for allocation), and it wins where V15 lost.
@@ -142,9 +142,26 @@ for allocation), and it wins where V15 lost.
    multiply-add rounds once instead of twice and diverges from the reference. The buried predicate is
    reduced with `anyTrue` (an OR), which is order-independent, so neighbor scan order is free to change.
 
+5. **A `float` verdict pays off on GraalVM, not HotSpot.** Narrowing only the occlusion *comparison*
+   to single precision (`FloatNumericalSurface`: 256-bit `FloatVector`, 8 lanes vs 4, and half the
+   neighbor-scratch memory traffic, while point positions and areas stay `double` — the coordinate
+   subtraction stays in `double` to avoid cancellation, and `emitWeighted` uses the `double`
+   directions) is **~1.05–1.14x** faster than the `double` distinct surface on **GraalVM 25** (Graal
+   JIT) — uniformly across 1 and 16 threads and tess 2–4. On **HotSpot 25** (Oracle C2) the *same*
+   bytecode is **neutral to slightly slower** (0.93–1.01x): C2's `double` Vector path is already good
+   and the per-atom `double→float` narrowing is not amortized, worst at low tess where neighbor lists
+   are short and the 8-wide loop falls to its scalar tail. So the float win is JIT-dependent, worth
+   shipping only because the deployment JVM is GraalVM — and even there it is modest, because the
+   (unchanged) neighbor build is a large fixed share of the time. Not bit-exact: a tessellation point
+   within `float` epsilon of the occlusion boundary may flip survival, but over the whole corpus
+   (incl. the degenerate solvent=0 surface) total-area error stayed ≤ 1.4e-5 and the distinct
+   point-set symmetric difference ≤ 1.4e-5 of points — well within SAS discretization error. (An
+   earlier 1.45x figure came from a 10-build-per-round micro-bench and was a warmup artifact; the
+   200-build median put it at ~1.12x. Corollary to lesson 15.)
+
 ### Algorithmic wins
 
-5. **Deduplicate tessellation directions (the biggest single win).** CDK's icosahedral tessellation
+6. **Deduplicate tessellation directions (the biggest single win).** CDK's icosahedral tessellation
    emits each direction about **5.7x** (240 points but only 42 distinct directions at tess 2; 960/162
    at tess 3; 3840/642 at tess 4), because it returns all three vertices of every shared-vertex
    triangle. The buried verdict depends only on direction, so evaluate each distinct direction once
@@ -152,45 +169,46 @@ for allocation), and it wins where V15 lost.
    same order, same areas, ~5.7x fewer scans. This was the single largest speedup (+79% at tess 2).
    The mapping is a pure function of the tessellation, so memoize it per build.
 
-6. **The neighbor cutoff was over-inflated; tighten it per pair.** A neighbor `j` can bury a point of
+7. **The neighbor cutoff was over-inflated; tighten it per pair.** A neighbor `j` can bury a point of
    atom `i` only if their expanded spheres overlap, `d(i,j) < R_i + R_j`. When `d >= R_i + R_j`,
    `diff . p <= |diff| <= thresh` for every `p`, so `j` never buries anything and can be dropped with
    zero effect on the result. The cell grid's global cutoff (`2*(maxRadius+solvent)`) is much looser
    and admits many such never-firing neighbors. Filtering to the exact per-pair bound roughly halved
    the neighbor count fed to the (dominant) scan. Bit-exact, with a one-line geometric proof.
 
-7. **A cheap hint beat an expensive sort.** Sorting each atom's neighbors by occlusion strength
+8. **A cheap hint beat an expensive sort.** Sorting each atom's neighbors by occlusion strength
    (`DevSurfaceV3Sorted`) helped, but profiling showed the sort had become ~42% of runtime. Replacing it
    with a last-occluder hint (remember the neighbor that buried the previous point; test it first)
    captured the same early-exit benefit at near-zero cost, because consecutive tessellation points are
    spatially coherent. The hint variant beat the sort variant at every tessellation level.
 
-8. **Exploit symmetry in the neighbor build.** The neighbor relation is symmetric, so a half-stencil
+9. **Exploit symmetry in the neighbor build.** The neighbor relation is symmetric, so a half-stencil
    that computes each unordered pair's distance once (recording both directions) halves the distance
    math versus querying every atom independently.
 
 ### Numerics and what does or does not break bit-exactness
 
-9. **Safe (container/order only), keep as default:** changing the result container (e.g. `List<Point3d>`
+10. **Safe (container/order only), keep as default:** changing the result container (e.g. `List<Point3d>`
    to a flat `double[]`), reordering neighbors, reordering the occlusion scan, dropping neighbors that
    provably never bury, deduplicating directions. None touch the arithmetic that produces a surviving
    point.
 
-10. **Unsafe (changes the floating-point result), opt-in variant only:** FMA, `float` instead of
+11. **Unsafe (changes the floating-point result), opt-in variant only:** FMA, `float` instead of
     `double`, and reassociating sums. Note the subtle one: **`x / c` is not bit-identical to
     `x * (1/c)`** (the reciprocal rounds, then the multiply rounds again). We rejected a
     reciprocal-multiply micro-opt for the threshold division for exactly this reason; it can flip a
-    `>` comparison in the last ULP on a boundary point.
+    `>` comparison in the last ULP on a boundary point. The `float`-verdict variant (lesson 5) is the
+    one place this opt-in is actually shipped, behind tolerance tests rather than the bit-exact harness.
 
 ### Parallelism and scaling
 
-11. **16-thread scaling is bound by memory bandwidth and turbo downclock, not GC.** At 16 physical
+12. **16-thread scaling is bound by memory bandwidth and turbo downclock, not GC.** At 16 physical
     cores throughput scaled ~13.2x (about 82% efficiency); the loss is shared memory bandwidth (the
     scan streams contiguous arrays) plus the all-core clock being lower than single-core boost. GC was
     only ~2-4% of wall time. Part of the 18% loss (the downclock half) is a hardware limit and not
     recoverable in software.
 
-12. **Reducing allocation does not help throughput when GC is not the bottleneck.** The
+13. **Reducing allocation does not help throughput when GC is not the bottleneck.** The
     low-allocation variant cut allocation ~63% and GC ~6-7x, but was ~5% *slower* at 16 threads,
     because its extra compute (a second distance pass) cost more than the GC it saved. Lower
     allocation only wins under genuine GC/heap pressure (small heap, high core count, throughput
@@ -206,7 +224,7 @@ for allocation), and it wins where V15 lost.
     where the occlusion scan dominates and GC pressure is highest. The lesson: a hot method that is also
     the top allocator is *not* therefore allocation-bound. The neighbor build is CPU-bound on its
     distance arithmetic; trading that arithmetic for less allocation loses even at 16 threads, because
-    (per lesson 11) the box is bandwidth/turbo-bound, not GC-bound. The right lever for that hot method
+    (per lesson 12) the box is bandwidth/turbo-bound, not GC-bound. The right lever for that hot method
     is to cut *work* with no added compute (e.g. eliminate the redundant per-query CSR-to-`IntArrayList`
     copy), not to trade compute for allocation.
 
@@ -226,25 +244,25 @@ for allocation), and it wins where V15 lost.
     was never the problem, the wrapper overhead and the second write-stream were. Make the necessary
     work cheap; don't pay to avoid it with more compute.
 
-13. **Intra-surface parallelism conflicts with across-item parallelism.** p2rank already runs one
+14. **Intra-surface parallelism conflicts with across-item parallelism.** p2rank already runs one
     protein per core. Parallelizing a single surface across threads would oversubscribe and worsen the
     bandwidth/downclock contention in that case; it only helps the single-protein / idle-core regime,
     and only with adaptive gating.
 
 ### Methodology
 
-14. **Measure, do not theorize.** Three times a confident hypothesis was overturned by a five-minute
+15. **Measure, do not theorize.** Three times a confident hypothesis was overturned by a five-minute
     measurement: (a) the vector-escape fear (refuted by JFR allocation counts), (b) the
     low-allocation-wins-at-scale fear (refuted by a throughput run), (c) the AVX-512 regression
     (discovered only because the benchmark caught the vectorized variant dropping below CDK). The
     benchmark and the profiler decided the design, not intuition.
 
-15. **Lean on the equivalence harness.** Because every variant is checked bit-for-bit against CDK over
+16. **Lean on the equivalence harness.** Because every variant is checked bit-for-bit against CDK over
     the corpus, we could refactor the hottest code aggressively and trust the tests to catch any
     divergence (including subtle ones like point ordering after the dedup). Build the oracle first;
     optimize fearlessly after.
 
-16. **Benchmark hygiene.**
+17. **Benchmark hygiene.**
     - Compare **ratios vs CDK on the same JVM**, not absolute milliseconds across runs (machine load,
       turbo, and JIT warmup make cross-run absolutes unreliable).
     - The harness is coarse (median of a few runs after warmup), good for relative comparison, not for
@@ -267,7 +285,7 @@ for allocation), and it wins where V15 lost.
   and live in shared LLC. Revisit only on multi-socket hardware.
 - **Caching the neighbor grid across builds.** Coordinates differ per protein, so the grid genuinely
   cannot be reused; it is correctly per-build.
-- **Reciprocal-multiply for the threshold division.** Breaks bit-exactness (see lesson 10).
+- **Reciprocal-multiply for the threshold division.** Breaks bit-exactness (see lesson 11).
 - **Parameterizing the vector species.** Breaks intrinsification (see lesson 1).
 
 ---
@@ -281,7 +299,7 @@ for allocation), and it wins where V15 lost.
 - **Global tessellation/template cache keyed by tessellation level**, including the dedup mapping, so
   thousands of builds share one immutable tessellation instead of rebuilding it each construction.
   Helps small proteins and batch runs most.
-- **`float32` opt-in variant.** Halves memory traffic and doubles SIMD lanes, the most direct lever on
-  the bandwidth ceiling; single precision is well within the tessellation discretization error for
-  SAS. Breaks bit-exactness, so it ships separately with tolerance tests (keep the coordinate
-  subtraction in `double`, narrow to `float` for the scan, to avoid cancellation).
+- ~~**`float32` opt-in variant.**~~ **Built** as `FloatNumericalSurface` (float verdict, double
+  positions/areas; tolerance-tested). The bandwidth/lane argument held only partially: it is ~1.05–1.14x
+  on GraalVM and neutral-to-slower on HotSpot C2, because the per-atom `double→float` narrowing is not
+  free and the neighbor build is a large unchanged share. See lesson 5.
