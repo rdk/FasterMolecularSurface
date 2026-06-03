@@ -26,8 +26,13 @@ optimization history is `docs/performance-lessons.md`.
 - Flags: `-PallTests` (include the ladder + equivalence tests), `-PnoVector` (drop
   `jdk.incubator.vector` to exercise the scalar fallback), `-PtestForks=N|auto`,
   `-PjavaToolchain=<ver>` (toolchain defaults to 17; CI overrides per matrix entry).
-- `./gradlew benchmark` — opt-in `@Tag("benchmark")` harness (excluded from `test`). Numbers and
-  methodology live in `docs/performance-lessons.md`.
+- `./bench.sh` then `python3 bench-table.py` — the **primary** benchmark: JMH (`src/jmh/java/SurfaceBench`,
+  forked + CI) over the shared `SurfaceCatalog` registry; `bench.sh` pins the machine + stamps env, the
+  python script renders the ×CDK ladder from the CSV. `./gradlew benchmark` is the **legacy** median-of-3
+  harness, kept only to reproduce the historical numbers (don't trust its sub-1.1× deltas).
+- `./gradlew scorecard` — opt-in accuracy + oracle-free quality report (duplicate ratio, too-close ratio,
+  point evenness) per variant, dispatched by fidelity tier. Future non-bit-exact sampling surfaces plug in
+  here without needing a point-set oracle. `SurfaceQualityTest` asserts the invariants in the default suite.
 - Regenerate the golden baseline (only after an **intentional** algorithm change):
   `./gradlew test --tests '*GoldenValuesGenerator' -Dgolden.regenerate=true`.
 

@@ -120,24 +120,36 @@ claiming a rung result or after touching the shared engine or any surface. Usefu
 
 # Benchmarking
 
-An opt-in timing harness, excluded from the normal test run, compares variants against CDK's reference
-over the same corpus:
-```
-./gradlew benchmark
-```
-This runs every `@Tag("benchmark")` class:
+The primary harness is **JMH** (`src/jmh/java/SurfaceBench`) — forked, warmed up, with run-to-run
+confidence intervals, so sub-1.1× differences can be told apart from turbo jitter:
 
-- **`SurfaceBenchmark`** — the base variants vs CDK `NumericalSurface` (`FasterNumericalSurface`, the
-  `DevSurfaceV*` ladder).
-- **`DistinctSurfaceBenchmark`** — the distinct (deduplicated-direction) surfaces.
-- **`DistinctPackedV2Benchmark`** / **`DistinctPackedV2ThreadedBenchmark`** — the recommended
-  `DistinctPackedNumericalSurfaceV2`, single-thread and multi-thread.
+```
+./bench.sh                 # pins CPU governor / disables turbo (needs root), stamps env, runs JMH -> CSV
+python3 bench-table.py     # renders the speedup ladder (×CDK) from the CSV
+```
 
-Two measurement regimes coexist and are **not interchangeable**: a per-structure *median-wall-time*
-harness and a *steady-state aggregate-throughput* harness (they report different absolute multiples, so
-never compare a number from one against the other — regenerate a whole comparison with a single harness).
-The measured ladder numbers, the methodology, and the GraalVM-vs-HotSpot notes live in
-[`docs/performance-lessons.md`](docs/performance-lessons.md).
+`SurfaceBench` is one parameterized benchmark over `variantId` × `tess` × `consume` (`AREA` vs `POINTS`,
+the latter draining the zero-copy `surfacePointsXYZ()` path the way p2rank does); thread scaling is JMH's
+`-t` flag. Every variant comes from the shared `SurfaceCatalog` registry (one entry per surface), so the
+default run covers the production surfaces + champion and the full `DevSurfaceV1..V19` ladder is available
+via `-p variantId=V1,V9,V18,…`. Profiling is JMH's built-in `profilers` (async-profiler / `perfnorm`),
+commented in the `jmh { }` block of `lib/build.gradle`.
+
+**Accuracy + intrinsic quality scorecard** (`./gradlew scorecard`) reports, per registry variant and by
+**fidelity tier** (`REFERENCE` / `BIT_EXACT` / `TOLERANCE` / `SAMPLING`): area agreement vs the exact
+oracle, plus oracle-free quality metrics — **duplicate-point ratio, too-close ratio, point evenness
+(NN-distance CV, min/mean)**. These need no reference, so they also judge non-bit-exact families: the
+planned density samplers (see [`docs/surface-api-evolution-plan.md`](docs/surface-api-evolution-plan.md))
+are scored on area convergence + quality, never required to be bit-exact. `SurfaceQualityTest` asserts the
+family-relative invariants in the default suite.
+
+**Legacy harness, kept for reproducibility:** `./gradlew benchmark` still runs the original
+`@Tag("benchmark")` median-of-3 classes (`SurfaceBenchmark`, `DistinctSurfaceBenchmark`,
+`DistinctPackedV2Benchmark`, `DistinctPackedV2ThreadedBenchmark`) — the method that produced the
+historical ladder numbers. Its two measurement regimes (per-structure median-wall vs steady-state
+aggregate-throughput) are **not interchangeable**. The historical numbers, methodology, and
+GraalVM-vs-HotSpot notes live in [`docs/performance-lessons.md`](docs/performance-lessons.md); untried
+ideas and the measurement-gate rationale are in [`docs/optimization-backlog.md`](docs/optimization-backlog.md).
 
 # Molecular volume (not implemented)
 

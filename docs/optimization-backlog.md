@@ -73,6 +73,13 @@ V18 = 1.031×) are **inside the noise floor of the harness that measured them**,
 ideas are similarly sub-1.1× refinements — they cannot be evaluated with the current setup. The
 *correctness* gate (golden + equivalence harness) is production-grade; the *measurement* gate is not.
 
+> **Status: largely built.** The JMH harness (`SurfaceBench` + `bench.sh` + `bench-table.py`), the shared
+> `SurfaceCatalog` registry, the fidelity-tiered `scorecard` (accuracy + oracle-free quality metrics:
+> duplicate ratio, too-close ratio, point evenness), and the machine-pinning/env-stamp script now exist
+> (items 1, 3, 5, 6 below; profiling via JMH's built-in `profilers`, item 2). The legacy median-of-3
+> harness is kept for historical reproducibility. **Remaining:** a *pinned* full run on the quiet box to
+> regenerate the canonical table (item 4) — author's step, since the numbers are machine-specific.
+
 **Must-do-first:**
 1. **JMH with `@Fork ≥ 3` + variance/CI reporting.** The current median-of-3, single-fork,
    `volatile`-blackhole harness can't separate a 1.03× win from turbo jitter. `@Fork` (separate JVMs)

@@ -82,6 +82,28 @@ final class TestStructures {
         return Stream.of(Structure.values()).map(Arguments::of);
     }
 
+    /** Load every structure's first atom container (shared corpus for the benchmark/quality harnesses). */
+    static IAtomContainer[] loadAll() {
+        Structure[] all = Structure.values();
+        IAtomContainer[] out = new IAtomContainer[all.length];
+        for (int i = 0; i < all.length; i++) out[i] = all[i].load();
+        return out;
+    }
+
+    /**
+     * Load every structure except the ones CDK's reference {@code NumericalSurface} cannot process
+     * (3CI3 / cobalt NPEs there). Used as the common benchmark corpus so the CDK baseline and every
+     * library variant are timed on the identical structure set, keeping speedup ratios clean.
+     */
+    static IAtomContainer[] loadAllCdkSafe() {
+        List<IAtomContainer> out = new java.util.ArrayList<>();
+        for (Structure s : Structure.values()) {
+            if (s == Structure.COBALAMIN) continue;
+            out.add(s.load());
+        }
+        return out.toArray(new IAtomContainer[0]);
+    }
+
     /**
      * Parameter combinations for cross-variant equivalence: each {@code (structure, solventRadius,
      * tessLevel)}. Covers the tessellation sweep at the standard 1.4 A solvent radius — including

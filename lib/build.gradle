@@ -10,6 +10,9 @@ plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
     id 'maven-publish'
+    // Statistically-rigorous benchmark harness (forks + warmup + CI). The legacy `benchmark` task is
+    // kept alongside it for reproducing the historical numbers with the original method.
+    id 'me.champeau.jmh' version '0.7.2'
 }
 
 repositories {
@@ -44,6 +47,12 @@ dependencies {
     implementation 'org.openscience.cdk:cdk-core:2.11'           // PeriodicTable (internal)
     implementation 'org.openscience.cdk:cdk-qsarmolecular:2.11'  // NumericalSurface, Tessellate (internal)
     implementation 'org.openscience.cdk:cdk-silent:2.11'         // Atom (internal)
+
+    // The JMH benchmark source set (src/jmh/java) reuses the test corpus + PDB loader and the shared
+    // SurfaceCatalog registry, so it needs the test output + the test-only deps those classes pull in.
+    jmhImplementation sourceSets.test.output
+    jmhImplementation libs.junit.jupiter                          // TestStructures references JUnit Arguments
+    jmhImplementation 'org.openscience.cdk:cdk-pdb:2.11'          // TestStructures' PDBReader at runtime
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -78,7 +87,8 @@ tasks.withType(Test).configureEach {
 tasks.named('test') {
     // Use JUnit Platform for unit tests. Benchmarks are opt-in via the 'benchmark' task.
     useJUnitPlatform {
-        excludeTags 'benchmark'
+        // 'benchmark' = the legacy timing harness; 'scorecard' = the opt-in accuracy/quality report.
+        excludeTags 'benchmark', 'scorecard'
     }
     // Dev-ladder coverage, excluded by default (run the complete set with -PallTests, i.e.
     // ./unit-test-all.sh): the 19 per-rung DevSurfaceV* contract tests AND the cross-variant
@@ -111,9 +121,11 @@ tasks.named('test') {
     }
 }
 
-// Opt-in performance benchmark: ./gradlew benchmark
+// LEGACY opt-in performance benchmark (original median-of-3 wall-clock harness): ./gradlew benchmark
+// Kept verbatim so the historical ladder numbers stay reproducible with the method that produced them.
+// The new statistically-rigorous harness is `./gradlew jmh` (src/jmh/java, configured below).
 tasks.register('benchmark', Test) {
-    description = 'Runs the @Tag("benchmark") performance harness for comparing surface variants.'
+    description = 'LEGACY @Tag("benchmark") median-of-3 harness (kept for historical reproducibility).'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
@@ -125,6 +137,39 @@ tasks.register('benchmark', Test) {
         showStandardStreams = true
     }
     outputs.upToDateWhen { false }
+}
+
+// Opt-in accuracy + intrinsic-quality scorecard (per-variant, fidelity-tiered): ./gradlew scorecard
+tasks.register('scorecard', Test) {
+    description = 'Runs the @Tag("scorecard") accuracy + intrinsic point-quality report over the registry.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'scorecard'
+    }
+    maxHeapSize = '2g'
+    testLogging {
+        showStandardStreams = true
+    }
+    outputs.upToDateWhen { false }
+}
+
+// New JMH benchmark harness (src/jmh/java). Run: ./gradlew jmh   (results CSV under build/results/jmh/)
+// Forks + warmup + measurement iterations give run-to-run variance/CI the legacy harness lacks, so a
+// sub-1.1x rung can be told apart from turbo jitter. The SIMD scans need the incubator module at runtime.
+jmh {
+    jmhVersion = '1.37'
+    jvmArgs = ['--add-modules', 'jdk.incubator.vector', '-Xmx2g']
+    fork = 3
+    warmupIterations = 5
+    iterations = 10
+    timeUnit = 'ms'
+    resultFormat = 'CSV'
+    resultsFile = file("$projectDir/build/results/jmh/results.csv")
+    // To profile a run, uncomment one (async-profiler must be installed for the flamegraph):
+    // profilers = ['gc', 'perfnorm']
+    // profilers = ['async:libPath=/path/to/libasyncProfiler.so;output=flamegraph']
 }
 
 base {
