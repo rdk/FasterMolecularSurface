@@ -21,7 +21,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          # Build requires JDK 17+ (Gradle 9.x + the Java 17 toolchain in lib/build.gradle);
+          # Java 11 can neither run the build nor the artifact.
+          java-version: '17'
           distribution: 'temurin'
 
       - name: Setup Gradle
