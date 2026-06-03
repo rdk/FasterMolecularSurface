@@ -40,7 +40,11 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        // Default 17 (the library's baseline JVM). CI passes -PjavaToolchain=<version> per matrix entry
+        // so the build compiles and runs the tests on each target JVM (incl. GraalVM); without this the
+        // pinned toolchain would run every matrix entry on 17. The published artifact is built with the
+        // default 17 toolchain by the publish workflow.
+        languageVersion = JavaLanguageVersion.of((findProperty('javaToolchain') ?: '17').toString() as int)
     }
 }
 
@@ -52,7 +56,12 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['--add-modules', 'jdk.incubator.vector']
 }
 tasks.withType(Test).configureEach {
-    jvmArgs '--add-modules', 'jdk.incubator.vector'
+    // The SIMD scans need the incubator module at runtime; pass -PnoVector to omit it and exercise the
+    // scalar fallback path (probeVector() returns false, so the surfaces run their scalar scans).
+    // Compilation always keeps the module (see JavaCompile config above).
+    if (!project.hasProperty('noVector')) {
+        jvmArgs '--add-modules', 'jdk.incubator.vector'
+    }
 }
 
 tasks.named('test') {
@@ -60,10 +69,28 @@ tasks.named('test') {
     useJUnitPlatform {
         excludeTags 'benchmark'
     }
+    // Dev-ladder coverage, excluded by default (run the complete set with -PallTests, i.e.
+    // ./unit-test-all.sh): the 19 per-rung DevSurfaceV* contract tests AND the cross-variant
+    // equivalence harness that bit-for-bit re-verifies every rung against FasterNumericalSurface over
+    // the whole corpus. Together these are the bulk of the suite's runtime (GridSoaEquivalenceTest alone
+    // is ~125s). The production surfaces + FasterNumericalSurface keep their full contract coverage, and
+    // the distinct/float surfaces keep their own equivalence-vs-Faster checks, in the default run.
+    if (!project.hasProperty('allTests')) {
+        exclude '**/DevSurfaceV*ContractTest.class'
+        exclude '**/GridSoaEquivalenceTest.class'
+        exclude '**/SoaEquivalenceTest.class'
+    }
     // The cross-variant equivalence tests build full surfaces (incl. the ~4800-atom 4HHB at
     // tessellation level 4) for several variants across many parameter combinations, so the test
     // JVM needs more than the default heap.
     maxHeapSize = '2g'
+    // Parallel test forks. Default 1 (single-threaded, the historical behavior). Override with
+    // -PtestForks=N, or -PtestForks=auto for (CPU cores / 2). ./unit-test.sh pins 1; ./unit-test-all.sh
+    // uses auto. Each fork can use up to maxHeapSize, so high fork counts raise peak memory.
+    def testForks = (project.findProperty('testForks') ?: '1').toString()
+    maxParallelForks = testForks == 'auto'
+            ? Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+            : testForks.toInteger()
     // Forward the golden-baseline regeneration flag to the test JVM when present.
     if (System.getProperty('golden.regenerate') != null) {
         systemProperty 'golden.regenerate', System.getProperty('golden.regenerate')
