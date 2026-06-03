@@ -38,7 +38,9 @@ distance produces; the areas are exact).
   faster on GraalVM (neutral on HotSpot) at a small, tolerance-bounded accuracy cost. Not bit-exact.
 
 The full optimization history (the `DevSurfaceV1..V19` ladder) and the measured rationale behind these
-choices are documented in [`docs/performance-lessons.md`](docs/performance-lessons.md).
+choices are documented in [`docs/performance-lessons.md`](docs/performance-lessons.md). A proposed
+auto-selection factory and density-sampling API — **planned, not yet implemented** — is sketched in
+[`docs/surface-api-evolution-plan.md`](docs/surface-api-evolution-plan.md).
 
 # Testing
 
@@ -65,16 +67,43 @@ algorithm. It runs over a corpus of ten representative PDB structures (327–477
 
 Run the suite:
 ```
-./gradlew test
+./gradlew test          # default scope (see the caveat below), or ./unit-test.sh
+./unit-test-all.sh      # full suite: the DevSurfaceV* ladder + cross-variant equivalence harness
 ```
+
+**The default `./gradlew test` is a reduced scope.** To keep everyday runs fast it *excludes* the
+per-rung `DevSurfaceV*ContractTest`s and the cross-variant equivalence harness (`GridSoaEquivalenceTest`,
+`SoaEquivalenceTest`) — the bulk of the runtime. The production surfaces and `FasterNumericalSurface`
+keep full contract coverage, and the distinct/float surfaces keep their equivalence-vs-Faster checks, so
+the default run is a real gate; but a green `./gradlew test` does **not** mean the whole ladder was
+re-verified. Run the full suite (via `./unit-test-all.sh`, i.e. `-PallTests -PtestForks=auto`) before
+claiming a rung result or after touching the shared engine or any surface. Useful flags:
+
+- `-PallTests` — include the ladder contract tests + equivalence harness.
+- `-PtestForks=N|auto` — parallel test forks (`auto` = CPU cores / 2); default 1.
+- `-PnoVector` — drop `jdk.incubator.vector` to exercise the scalar fallback scan.
+- `-PjavaToolchain=<ver>` — build/test on a specific JDK (default 17; CI overrides per matrix entry).
 
 # Benchmarking
 
-A coarse, opt-in timing harness (`SurfaceBenchmark`, excluded from the normal test run) compares a
-variant against CDK's reference over the same corpus:
+An opt-in timing harness, excluded from the normal test run, compares variants against CDK's reference
+over the same corpus:
 ```
 ./gradlew benchmark
 ```
+This runs every `@Tag("benchmark")` class:
+
+- **`SurfaceBenchmark`** — the base variants vs CDK `NumericalSurface` (`FasterNumericalSurface`, the
+  `DevSurfaceV*` ladder).
+- **`DistinctSurfaceBenchmark`** — the distinct (deduplicated-direction) surfaces.
+- **`DistinctPackedV2Benchmark`** / **`DistinctPackedV2ThreadedBenchmark`** — the recommended
+  `DistinctPackedNumericalSurfaceV2`, single-thread and multi-thread.
+
+Two measurement regimes coexist and are **not interchangeable**: a per-structure *median-wall-time*
+harness and a *steady-state aggregate-throughput* harness (they report different absolute multiples, so
+never compare a number from one against the other — regenerate a whole comparison with a single harness).
+The measured ladder numbers, the methodology, and the GraalVM-vs-HotSpot notes live in
+[`docs/performance-lessons.md`](docs/performance-lessons.md).
 
 # Molecular volume (not implemented)
 
