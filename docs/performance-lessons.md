@@ -48,7 +48,7 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 18 | `DevSurfaceV18SortedCoords` | cell-sorted candidate coordinates (sequential read, no gather), on V17 **(compute champion)** | see below | | |
 | 19 | `DevSurfaceV19FlatStore` | V18 + flat `double[]` point store / zero-copy `surfacePointsXYZ()` (storage only, compute-neutral) | see below | | |
 | 20 | `DevSurfaceV20TightGrid` | finer neighbor grid (cells = cutoff/2, ±2 stencil) on the V2 engine — **negative result, ~12–14% slower** | see below | | |
-| 21 | `DevSurfaceV21SimdBuild` | SIMD-vectorize the neighbor-build distance pass on the V2 engine — **candidate, preliminary ~+9–11% at tess 2** (needs a clean re-measure) | see below | | |
+| 21 | `DevSurfaceV21SimdBuild` | SIMD-vectorize the neighbor-build distance pass on the V2 engine — **bit-exact win, ~+4–5% at tess 2** (neutral at tess 4) | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -143,18 +143,21 @@ on V2 than on a full-multiplicity rung because V2 emits ~5.7× fewer points, so 
 of its runtime. Lesson: **the cell grid is already cutoff-sized — a finer grid is bit-exact but loses
 ~12–14%; don't re-try it.** (The classes are kept, like V15, so the measured negative result is on record.)
 
-**Rung 21 (candidate, pending clean measurement): `DevSurfaceV21SimdBuild`.** Takes
-`DistinctPackedNumericalSurfaceV2` and SIMD-vectorizes only the neighbor build's distance pass — the build
-is ~47% of CPU at 16 threads / tess 2 (profiled on V2, p2rank's regime), and its inner
-`d2 = dx²+dy²+dz²; d2 < (Ri+Rj)²` test was scalar. `SimdDistanceCellGridNeighborList` keeps the same grid,
-±1 stencil, and per-pair prune (so the neighbor set is identical → bit-for-bit identical to V2, verified
-over the full corpus × config matrix), but holds the cell-sorted candidate coordinates as four SoA streams
-and tests a 256-bit lane (4 candidates) at once with a masked compare, draining survivors scalar; the
-same-cell block stays scalar. Bit-exactness: the lane-wise `dx·dx+dy·dy+dz·dz` (no FMA, same order as
-scalar) and the `< sumR²` compare reproduce the scalar verdict per lane. **Preliminary numbers show
-~+9–11% over V2 at tess 2** (single-thread and 16 threads), but they were taken on a contended box (load
-~34/32 cores), so the CIs were wide and this is recorded as a *candidate*, not a confirmed champion —
-re-measure with `./bench.sh` on the quiet, governor-pinned box before promoting it.
+**Rung 21, `DevSurfaceV21SimdBuild` (bit-exact win at tess 2).** Takes `DistinctPackedNumericalSurfaceV2`
+and SIMD-vectorizes only the neighbor build's distance pass — the build is ~47% of CPU at 16 threads /
+tess 2 (profiled on V2, p2rank's regime), and its inner `d2 = dx²+dy²+dz²; d2 < (Ri+Rj)²` test was scalar.
+`SimdDistanceCellGridNeighborList` keeps the same grid, ±1 stencil, and per-pair prune (so the neighbor set
+is identical → bit-for-bit identical to V2, verified over the full corpus × config matrix), but holds the
+cell-sorted candidate coordinates as four SoA streams and tests a 256-bit lane (4 candidates) at once with
+a masked compare, draining survivors scalar; the same-cell block stays scalar. Bit-exactness: the lane-wise
+`dx·dx+dy·dy+dz·dz` (no FMA, same order as scalar) and the `< sumR²` compare reproduce the scalar verdict
+per lane. Measured vs V2 (JMH, GraalVM 25, 9950X, idle box, 3 forks): **+4.8% at tess 2 single-thread
+(13.15→12.52 ms), +3.8% at tess 2 / 16 threads (15.95→15.35 ms)**; neutral at tess 4 (the build is only
+~18% of CPU there, so a build speedup barely moves the total). The 16-thread win is *smaller* than
+single-thread despite the build being a larger fraction there, because at 16 threads the build is
+bandwidth-bound, so vectorizing compute helps less and the SoA repack adds some memory traffic. A modest
+but real bit-exact gain at p2rank's operating point, in line with the V16–V18 increments. (An earlier
+~+9–11% figure was a contended-box artifact — corrected here on the idle box, a corollary to lesson 5.)
 
 ---
 
