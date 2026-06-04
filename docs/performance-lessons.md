@@ -47,6 +47,7 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 17 | `DevSurfaceV17PackedNbr` | packed single-`int[]` edge buffer, on V16 | see below | | |
 | 18 | `DevSurfaceV18SortedCoords` | cell-sorted candidate coordinates (sequential read, no gather), on V17 **(compute champion)** | see below | | |
 | 19 | `DevSurfaceV19FlatStore` | V18 + flat `double[]` point store / zero-copy `surfacePointsXYZ()` (storage only, compute-neutral) | see below | | |
+| 20 | `DevSurfaceV20TightGrid` | finer neighbor grid (cells = cutoff/2, ±2 stencil) on the V2 engine — **negative result, ~12–14% slower** | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -123,6 +124,23 @@ threads. It is a side-branch off V11, not a rung: see lesson 13 for why a profil
 neighbor build as the top hot method and top allocator still did not make allocation-reduction pay. V16
 is the same neighbor build attacked the right way (remove a redundant copy instead of trading compute
 for allocation), and it wins where V15 lost.
+
+**Side-branch (regression, kept as a documented negative result):** `DevSurfaceV20TightGrid` (rung 20)
+takes the recommended `DistinctPackedNumericalSurfaceV2` and swaps only its neighbor build for a finer
+cell grid — cells half the cutoff (`cellsPerCutoff = 2`) searched with a ±2 (5×5×5) stencil instead of
+the standard cell-sized grid with a ±1 (3×3×3) stencil. The intuition (a review suggestion) was that the
+existing `CellGrid` uses `boxSize = 2*radius`, "twice the per-pair cutoff," so a finer grid would visit a
+smaller candidate volume in the distance pass — the build being ~47% of CPU at 16 threads / tess 2
+(profiled on V2, the regime p2rank runs in). **It is bit-for-bit identical to V2 but slower: ~+13.5% at
+tess 2 single-thread, ~+12.3% at tess 2 / 16 threads** (JMH, GraalVM 25, 9950X). Two reasons it loses:
+(1) the premise was wrong — `2*radius` already **equals** the cutoff (`radius` is the max *expanded*
+radius and the cutoff is `Ri+Rj ≤ 2·maxExpanded`), so the grid was already optimally sized at cell =
+cutoff / ±1, and going finer only adds a 125-cell stencil (vs 27) and ~8× more grid cells to
+counting-sort; (2) at real molecular density there are already few atoms per cutoff-sized cell, so the
+candidate-volume reduction is small and does not pay for that overhead. The regression is slightly larger
+on V2 than on a full-multiplicity rung because V2 emits ~5.7× fewer points, so the build is a bigger share
+of its runtime. Lesson: **the cell grid is already cutoff-sized — a finer grid is bit-exact but loses
+~12–14%; don't re-try it.** (The classes are kept, like V15, so the measured negative result is on record.)
 
 ---
 
