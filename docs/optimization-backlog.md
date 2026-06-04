@@ -105,6 +105,34 @@ was the catch.
 
 ---
 
+## 1c. Additional ideas (post-A6, surfaced this session)
+
+Beyond the original A/B lists. The first three are being implemented + measured now as Dev rungs:
+
+- **C1 — Float-precision neighbor build** (`DevSurfaceV24…`, tolerance). A6 found the 16-thread build is
+  *bandwidth-bound*; doing the build's `d²<sumR²` test in single precision (float candidate coords, 8-wide)
+  halves the coordinate traffic — the one lever expected to scale *better* at 16 threads. Non-bit-exact (a
+  pair at the cutoff boundary can flip), so tolerance-tested vs V3; the misclassified pairs have ~empty caps,
+  so the area error should be tiny.
+- **C2 — A7 on the float scan** (`DevSurfaceV25…`). Padded-tail elimination lost on the 4-wide double scan
+  (rung 22) but the scalar tail is proportionally larger on the 8-wide `FloatNumericalSurface` scan.
+  Sentinels (`thresh=+∞`) never bury, so it's **bit-for-bit identical to `FloatNumericalSurface`**.
+- **C3 — Region-binned last-occluder hint** (`DevSurfaceV23…`, bit-exact). The hint already resolves ~50% of
+  directions in 1 test; caching a dominant occluder *per sphere octant* (not just the single last one) could
+  raise that. Bit-exact (only reorders which neighbor is tested first).
+
+Deferred / deployment-shaped:
+- **C4 — Whole-dataset GPU/batch throughput mode.** Single-protein GPU is dead (launch latency), but a
+  separate batch mode over thousands of proteins could win at dataset scale. A distinct offering.
+- **C5 — Intra-protein parallelism for single-large-protein *latency*** (adaptive gating so it doesn't fight
+  the per-protein-per-core throughput path lesson 14 chose).
+- **C6 — Solvent-radius-sweep reuse** (subset of B2): reuse the grid + pruned pairs across a radius sweep on
+  fixed coordinates. Bit-exact; gated by whether p2rank actually sweeps.
+- **C7 — Boundary-adaptive tessellation** / **C8 — Monte-Carlo importance-sampled directions** — approximate
+  fast modes; non-bit-exact, need the tolerance scorecard.
+
+---
+
 ## 2. Measurement gate — do this BEFORE the next optimization round
 
 This is a prerequisite, not a suggestion. The last three rungs (V16 = 1.03×, V17 = 1.057×,
