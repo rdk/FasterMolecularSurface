@@ -77,7 +77,10 @@ final class SurfaceCatalog {
             new Variant("V19", "DevSurfaceV19FlatStore",   Fidelity.BIT_EXACT, DevSurfaceV19FlatStore::new),
             new Variant("V20", "DevSurfaceV20TightGrid",   Fidelity.BIT_EXACT, DevSurfaceV20TightGrid::new),
             new Variant("V21", "DevSurfaceV21SimdBuild",   Fidelity.BIT_EXACT, DevSurfaceV21SimdBuild::new),
-            new Variant("V22", "DevSurfaceV22PaddedTail",  Fidelity.BIT_EXACT, DevSurfaceV22PaddedTail::new)
+            new Variant("V22", "DevSurfaceV22PaddedTail",  Fidelity.BIT_EXACT, DevSurfaceV22PaddedTail::new),
+            new Variant("V23", "DevSurfaceV23RegionHint",  Fidelity.BIT_EXACT, DevSurfaceV23RegionHint::new),
+            new Variant("V24", "DevSurfaceV24FloatBuild",  Fidelity.TOLERANCE, DevSurfaceV24FloatBuild::new),
+            new Variant("V25", "DevSurfaceV25FloatPaddedScan", Fidelity.TOLERANCE, DevSurfaceV25FloatPaddedScan::new)
     );
 
     static Variant byId(String id) {

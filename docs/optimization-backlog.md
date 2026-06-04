@@ -109,15 +109,15 @@ was the catch.
 
 Beyond the original A/B lists. The first three are being implemented + measured now as Dev rungs:
 
-- **C1 — Float-precision neighbor build** (`DevSurfaceV24…`, tolerance). A6 found the 16-thread build is
+- **C1 — Float-precision neighbor build** (`DevSurfaceV24FloatBuild`, tolerance). **WIN: ~1.6% single / 2.8% 16t at tess 2** (bandwidth signature confirmed). Candidate opt-in fast variant. A6 found the 16-thread build is
   *bandwidth-bound*; doing the build's `d²<sumR²` test in single precision (float candidate coords, 8-wide)
   halves the coordinate traffic — the one lever expected to scale *better* at 16 threads. Non-bit-exact (a
   pair at the cutoff boundary can flip), so tolerance-tested vs V3; the misclassified pairs have ~empty caps,
   so the area error should be tiny.
-- **C2 — A7 on the float scan** (`DevSurfaceV25…`). Padded-tail elimination lost on the 4-wide double scan
+- **C2 — A7 on the float scan** (`DevSurfaceV25FloatPaddedScan`). **NEGATIVE: ~neutral at tess 2/3, JIT-unstable ~5× slower at tess 4** — the padded loop defeats Vector intrinsics. A7 now dead on double AND float. Padded-tail elimination lost on the 4-wide double scan
   (rung 22) but the scalar tail is proportionally larger on the 8-wide `FloatNumericalSurface` scan.
   Sentinels (`thresh=+∞`) never bury, so it's **bit-for-bit identical to `FloatNumericalSurface`**.
-- **C3 — Region-binned last-occluder hint** (`DevSurfaceV23…`, bit-exact). The hint already resolves ~50% of
+- **C3 — Region-binned last-occluder hint** (`DevSurfaceV23RegionHint`, bit-exact). **NEGATIVE: ~+2–3% slower** — single hint was already enough. The hint already resolves ~50% of
   directions in 1 test; caching a dominant occluder *per sphere octant* (not just the single last one) could
   raise that. Bit-exact (only reorders which neighbor is tested first).
 

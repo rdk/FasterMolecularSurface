@@ -50,6 +50,9 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 20 | `DevSurfaceV20TightGrid` | finer neighbor grid (cells = cutoff/2, ±2 stencil) on the V2 engine — **negative result, ~12–14% slower** | see below | | |
 | 21 | `DevSurfaceV21SimdBuild` | SIMD-vectorize the neighbor-build distance pass on the V2 engine — **bit-exact win, ~+4–5% at tess 2** (neutral at tess 4) | see below | | |
 | 22 | `DevSurfaceV22PaddedTail` | V21 (A6) + padded-tail scan (A7, no scalar remainder) — **negative result: slower than V21**, the padding costs more than the tail it removes | see below | | |
+| 23 | `DevSurfaceV23RegionHint` | V3 + per-octant last-occluder hint (C3) — **negative result, ~+2–3% slower**; the single hint was already enough | see below | | |
+| 24 | `DevSurfaceV24FloatBuild` | V3 + single-precision SIMD neighbor build (C1) — **tolerance win, ~1.6% single / 2.8% 16t** (bandwidth) | see below | | |
+| 25 | `DevSurfaceV25FloatPaddedScan` | `FloatNumericalSurface` + padded 8-wide float scan (C2) — **negative result: JIT-unstable, ~5× slower at tess 4** | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -171,6 +174,28 @@ remove — and that tail only ran for *surviving* directions (buried ones early-
 little to save. Lesson: **on the double (4-wide) path the scalar tail is already cheap; eliminating it by
 padding does not pay.** It may still help the float (8-wide) scan, where the tail is proportionally larger
 (see lesson 5) — untested. A6 alone (V21) remains the best bit-exact build.
+
+**Rungs 23–25 (the "other ideas" C1–C3, JMH on the idle 9950X):**
+- **`DevSurfaceV24FloatBuild` (C1) — tolerance win.** V3 with the SIMD neighbor build's distance test done
+  in single precision (`FloatSimdDistanceCellGridNeighborList`, 8-wide), halving candidate-coordinate
+  traffic. **~1.6% faster than V3 single-thread, ~2.8% at 16 threads** at tess 2 — the win *grows* with
+  threads, the bandwidth signature A6 predicted (the 16-thread build is bandwidth-bound, so cutting traffic
+  helps most there). Not bit-exact (a cutoff-boundary pair can flip), but area error is within the float
+  tolerance (those pairs have near-empty caps). A candidate opt-in fast variant; stackable with the float
+  scan for a larger float-path win.
+- **`DevSurfaceV23RegionHint` (C3) — negative.** V3 with the single last-occluder hint generalized to one
+  hint per sphere octant. Bit-for-bit identical to V3 but **~2–3% slower**: the per-octant array + region
+  lookup + per-atom reset cost more than the marginally-higher hit rate returns — the single hint (already
+  resolving ~50% of directions in one test) was good enough.
+- **`DevSurfaceV25FloatPaddedScan` (C2) — negative, and instructive.** `FloatNumericalSurface` with A7's
+  padded-tail elimination on the 8-wide float scan. Bit-for-bit identical to `FloatNumericalSurface`, and
+  ≈neutral at tess 2/3 — but at tess 4 it is **~5× slower with a bimodal, fork-dependent variance**
+  (181 ± 81 ms vs the float scan's stable 37.5 ± 0.06 ms on an idle box). The padded loop structure
+  (`for k < padded`, no separate tail) intermittently **defeats the Vector API JIT intrinsics** (lesson 1:
+  a non-intrinsified vector loop collapses ~10×), where the established `loopBound + scalar tail` structure
+  does not. Lesson: **don't restructure a vector loop away from `loopBound + tail`** — the scalar tail is
+  cheap and the alternative risks losing intrinsification. A7 is now a measured negative on **both** the
+  double (rung 22) and float paths.
 
 ---
 
