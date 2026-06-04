@@ -48,6 +48,7 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 18 | `DevSurfaceV18SortedCoords` | cell-sorted candidate coordinates (sequential read, no gather), on V17 **(compute champion)** | see below | | |
 | 19 | `DevSurfaceV19FlatStore` | V18 + flat `double[]` point store / zero-copy `surfacePointsXYZ()` (storage only, compute-neutral) | see below | | |
 | 20 | `DevSurfaceV20TightGrid` | finer neighbor grid (cells = cutoff/2, ±2 stencil) on the V2 engine — **negative result, ~12–14% slower** | see below | | |
+| 21 | `DevSurfaceV21SimdBuild` | SIMD-vectorize the neighbor-build distance pass on the V2 engine — **candidate, preliminary ~+9–11% at tess 2** (needs a clean re-measure) | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -141,6 +142,19 @@ candidate-volume reduction is small and does not pay for that overhead. The regr
 on V2 than on a full-multiplicity rung because V2 emits ~5.7× fewer points, so the build is a bigger share
 of its runtime. Lesson: **the cell grid is already cutoff-sized — a finer grid is bit-exact but loses
 ~12–14%; don't re-try it.** (The classes are kept, like V15, so the measured negative result is on record.)
+
+**Rung 21 (candidate, pending clean measurement): `DevSurfaceV21SimdBuild`.** Takes
+`DistinctPackedNumericalSurfaceV2` and SIMD-vectorizes only the neighbor build's distance pass — the build
+is ~47% of CPU at 16 threads / tess 2 (profiled on V2, p2rank's regime), and its inner
+`d2 = dx²+dy²+dz²; d2 < (Ri+Rj)²` test was scalar. `SimdDistanceCellGridNeighborList` keeps the same grid,
+±1 stencil, and per-pair prune (so the neighbor set is identical → bit-for-bit identical to V2, verified
+over the full corpus × config matrix), but holds the cell-sorted candidate coordinates as four SoA streams
+and tests a 256-bit lane (4 candidates) at once with a masked compare, draining survivors scalar; the
+same-cell block stays scalar. Bit-exactness: the lane-wise `dx·dx+dy·dy+dz·dz` (no FMA, same order as
+scalar) and the `< sumR²` compare reproduce the scalar verdict per lane. **Preliminary numbers show
+~+9–11% over V2 at tess 2** (single-thread and 16 threads), but they were taken on a contended box (load
+~34/32 cores), so the CIs were wide and this is recorded as a *candidate*, not a confirmed champion —
+re-measure with `./bench.sh` on the quiet, governor-pinned box before promoting it.
 
 ---
 
