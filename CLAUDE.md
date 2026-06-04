@@ -9,7 +9,7 @@ A Java library with optimized implementations of CDK's `NumericalSurface`, behin
 `MolecularSurface` interface. Coordinates: `group=cz.cuni.cusbg`, `artifactId=faster-molecular-surface`,
 `version=1.5`. Source in `lib/src/main/java/cz/cuni/cusbg/surface/`, tests alongside in
 `lib/src/test/java/cz/cuni/cusbg/surface/`. Baseline JVM is **Java 17**; the deployment/benchmark JVM is
-GraalVM 25. Recommended default surface is `DistinctPackedNumericalSurfaceV2` (see `README.md`); the full
+GraalVM 25. Recommended default surface is `DistinctPackedNumericalSurfaceV3` (see `README.md`); the full
 optimization history is `docs/performance-lessons.md`.
 
 ## Build / test / benchmark
@@ -55,8 +55,8 @@ side by side preserves the comparison; rewriting one invalidates its recorded be
 **The frozen set (do not edit their behavior or shape):**
 - The whole `DevSurfaceV1..V19` ladder (`DevSurfaceV*.java`), including the V15 negative-result branch.
 - The named production surfaces: `FasterNumericalSurface`, `PackedNumericalSurface`,
-  `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctFasterNumericalSurface`,
-  `FloatNumericalSurface`.
+  `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctPackedNumericalSurfaceV3`
+  (the recommended default), `DistinctFasterNumericalSurface`, `FloatNumericalSurface`.
 - The concrete strategy implementations they wire together once benchmarked (see the closure rule below).
 
 **Classification rule — use this, NOT "is it in the perf doc".** A concrete class is frozen iff it is
@@ -89,7 +89,7 @@ Therefore:
 - **Treat the frozen set as immutable.** No clean-ups, renames, dedup-against-another-variant, or
   micro-optimizations. Add new work as a **new** `DevSurfaceVN`/named surface that inherits the shared
   contract test — never by editing the existing best in place. This is how a new default supersedes the
-  old one (add the implementation, re-point the docs); the current default `DistinctPackedNumericalSurfaceV2`
+  old one (add the implementation, re-point the docs); the current default `DistinctPackedNumericalSurfaceV3`
   is superseded the same way, not rewritten.
 - **Code reviews of frozen surfaces:** suppress *style / structure / micro-optimization* suggestions —
   they're out of scope. **Always still surface** correctness, security, resource-leak, or

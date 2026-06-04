@@ -66,6 +66,45 @@ Effort/confidence are the reviewers' estimates; treat as hypotheses to measure, 
 
 ---
 
+## 1b. UNFINISHED TRACK — the fully-buried-atom prize (LUT-bitmask scan)
+
+**Status: open, scoped, the single biggest remaining bit-exact opportunity. Resume here.**
+
+The feasibility instrumentation (`ScanInstrumentationTest`, tess 2) established:
+- **61% of atoms are fully buried** (emit zero surface points) yet consume **57% of the scan's
+  neighbor-tests** (~19% of tess-2 CPU at 16 threads).
+- The direction-major scan **cannot** exploit this — it must test all 42 directions to learn an atom is
+  fully buried. Its per-direction early-exit + last-occluder hint is already very effective (a direction
+  resolves in ~7.9 of 42 neighbor-tests, 50% via the hint in 1 test), so **naive A1 (bitmask) and A4
+  (neighbor prune) both lose** — measured, do not re-try them in those forms.
+
+**The idea that could capture it:** a **neighbor-major bitmask occlusion scan** that, for each neighbor,
+ORs a precomputed *cap→direction bitmask* into a per-atom accumulator, and **stops as soon as all
+directions are buried** (mask full) — an *atom-level* early-exit that fires for exactly the 61% fully-buried
+atoms. At tess 2 the accumulator is one `long` (42 bits). Bit-exact if each set bit is confirmed by the
+exact `diff·p > thresh` test (the cap mask only *narrows* candidates).
+
+**The hard dependency (why it's not a quick scaffold):** building each neighbor's cap mask must cost
+**far less than ~8 dot-tests**, or it loses to the existing early-exit. That needs a cheap, *sound* map
+from a neighbor's cap `(axis = diff/|diff|, cos halfangle = thresh/|diff|)` to "which of the fixed 42
+directions it buries" — a sphere index / LUT over the fixed tessellation directions (HEALPix / octant grid;
+deep-research §3 Q2). A conservative over-inclusive mask + exact confirmation keeps it bit-exact.
+
+**Resume checklist:**
+1. Prototype the cap→direction mask: for the fixed tess-2 42-direction set, a structure that, given a cap,
+   returns a 64-bit superset mask of buried directions cheaply (target ≪ 8 ops/neighbor).
+2. `BitmaskOcclusionScan` (new `OcclusionScan`): OR neighbor masks, confirm set bits exactly, **break when
+   all 42 bits set**, `emitWeighted` the survivors. Validate bit-exact vs V3 over the full corpus×config.
+3. Benchmark vs V3 at tess 2 (single + 16 threads) on an idle box. The win, if any, comes from the
+   fully-buried atoms; expect little at tess 4 (fewer fully-buried, bigger direction set per `long`).
+4. If it wins, promote to a production surface; else document as a negative result (like A2/A7).
+
+Related: A5 (DCLM dot-lattice) is the tess-3/4 analogue; B1 (analytic SASA) sidesteps sampling entirely.
+The bit-exact *incremental* well is otherwise tapped — A6 (now shipped as `DistinctPackedNumericalSurfaceV3`)
+was the catch.
+
+---
+
 ## 2. Measurement gate — do this BEFORE the next optimization round
 
 This is a prerequisite, not a suggestion. The last three rungs (V16 = 1.03×, V17 = 1.057×,

@@ -7,18 +7,22 @@ The public surface API is captured by the `MolecularSurface` interface.
 
 ## Recommended implementation
 
-**`DistinctPackedNumericalSurfaceV2` is the current best implementation — use it by default.**
+**`DistinctPackedNumericalSurfaceV3` is the current best implementation — use it by default.**
 
-It runs the fastest compute pipeline (cell-sorted pruned neighbour build, process-cached tessellation
-and van der Waals radii, copy-free CSR neighbour access) and emits **one point per distinct surviving
-direction** instead of the ~5.7–6× exact-coincident duplicates the icosahedral tessellation otherwise
-produces (the factor rises with tessellation level) — so downstream consumers need no sparsification step. The per-atom and total **surface areas
-are bit-for-bit identical to `FasterNumericalSurface`** (the dropped duplicates are multiplicity-weighted
-into the area). The occlusion scan is SIMD-vectorised (256-bit) when the JVM provides the Vector API,
-with a scalar fallback otherwise.
+It runs the fastest compute pipeline (cell-sorted pruned neighbour build with a **SIMD-vectorised distance
+pass**, process-cached tessellation and van der Waals radii, copy-free CSR neighbour access) and emits
+**one point per distinct surviving direction** instead of the ~5.7–6× exact-coincident duplicates the
+icosahedral tessellation otherwise produces (the factor rises with tessellation level) — so downstream
+consumers need no sparsification step. The per-atom and total **surface areas are bit-for-bit identical to
+`FasterNumericalSurface`** (the dropped duplicates are multiplicity-weighted into the area). The occlusion
+scan is SIMD-vectorised (256-bit) when the JVM provides the Vector API, with a scalar fallback otherwise.
+
+V3 is `DistinctPackedNumericalSurfaceV2` plus the SIMD neighbour build — **bit-for-bit identical output to
+V2**, ~4–5% faster at tessellation level 2 (p2rank's operating point); use V2 only if you need to reproduce
+the exact pre-V3 timing baseline.
 
 ```java
-MolecularSurface surface = new DistinctPackedNumericalSurfaceV2(atomContainer, 1.4 /* solventRadius */, 4 /* tessLevel */);
+MolecularSurface surface = new DistinctPackedNumericalSurfaceV3(atomContainer, 1.4 /* solventRadius */, 4 /* tessLevel */);
 double area = surface.getTotalSurfaceArea();
 ```
 
@@ -62,6 +66,8 @@ results via the scalar fallback, only slower.
 - **`PackedNumericalSurface`** — bit-exact full-multiplicity production surface with a zero-copy
   `surfacePointsXYZ()` delivery path; use when CDK-identical output *and* raw-coordinate bulk access are
   both wanted.
+- **`DistinctPackedNumericalSurfaceV2`** — the previous recommended surface; identical output to V3 with a
+  scalar (non-vectorised) neighbour build. Use only to reproduce the exact pre-V3 timing baseline.
 - **`FloatNumericalSurface`** — single-precision-verdict variant of the recommended surface; ~1.05–1.14×
   faster on GraalVM (neutral on HotSpot) at a small, tolerance-bounded accuracy cost. Not bit-exact.
 - **`DistinctFasterNumericalSurface`** — the `FasterNumericalSurface`-based counterpart of the distinct

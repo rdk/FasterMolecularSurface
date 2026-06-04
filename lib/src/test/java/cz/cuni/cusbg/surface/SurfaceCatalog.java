@@ -43,7 +43,7 @@ final class SurfaceCatalog {
 
     /** The production + champion subset the default JMH run and scorecard cover (full ladder via {@code -p}). */
     static final List<String> DEFAULT_IDS = List.of(
-            "CDK", "FASTER", "PACKED", "DISTINCT_PACKED_V2", "FLOAT", "V18", "V19");
+            "CDK", "FASTER", "PACKED", "DISTINCT_PACKED_V2", "DISTINCT_PACKED_V3", "FLOAT", "V18", "V19");
 
     /** Every registered variant. Add a row to benchmark / score a new surface (incl. future samplers). */
     static final List<Variant> ALL = List.of(
@@ -52,6 +52,7 @@ final class SurfaceCatalog {
             new Variant("PACKED",             "PackedNumericalSurface",          Fidelity.BIT_EXACT, PackedNumericalSurface::new),
             new Variant("DISTINCT_PACKED",    "DistinctPackedNumericalSurface",  Fidelity.BIT_EXACT, DistinctPackedNumericalSurface::new),
             new Variant("DISTINCT_PACKED_V2", "DistinctPackedNumericalSurfaceV2", Fidelity.BIT_EXACT, DistinctPackedNumericalSurfaceV2::new),
+            new Variant("DISTINCT_PACKED_V3", "DistinctPackedNumericalSurfaceV3", Fidelity.BIT_EXACT, DistinctPackedNumericalSurfaceV3::new),
             new Variant("DISTINCT_FASTER",    "DistinctFasterNumericalSurface",  Fidelity.BIT_EXACT, DistinctFasterNumericalSurface::new),
             new Variant("FLOAT",              "FloatNumericalSurface",           Fidelity.TOLERANCE, FloatNumericalSurface::new),
             // The DevSurfaceV1..V19 optimization ladder (available on demand: -p variantId=V1,V18,...).
