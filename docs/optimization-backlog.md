@@ -77,8 +77,10 @@ ideas are similarly sub-1.1× refinements — they cannot be evaluated with the 
 > `SurfaceCatalog` registry, the fidelity-tiered `scorecard` (accuracy + oracle-free quality metrics:
 > duplicate ratio, too-close ratio, point evenness), and the machine-pinning/env-stamp script now exist
 > (items 1, 3, 5, 6 below; profiling via JMH's built-in `profilers`, item 2). The legacy median-of-3
-> harness is kept for historical reproducibility. **Remaining:** a *pinned* full run on the quiet box to
-> regenerate the canonical table (item 4) — author's step, since the numbers are machine-specific.
+> harness is kept for historical reproducibility. A first JMH-measured production table (item 4) is now
+> recorded in `performance-lessons.md` (GraalVM 25, governor-pinned). **Remaining nice-to-have:** a fully
+> turbo-disabled, longer-iteration run for the official numbers (this box can't disable turbo via its
+> cpufreq driver; and re-measure the one `FLOAT/POINTS/tess4` outlier cell).
 
 **Must-do-first:**
 1. **JMH with `@Fork ≥ 3` + variance/CI reporting.** The current median-of-3, single-fork,

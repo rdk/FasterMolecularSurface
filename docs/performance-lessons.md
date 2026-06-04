@@ -126,6 +126,51 @@ for allocation), and it wins where V15 lost.
 
 ---
 
+## JMH-measured production comparison (2026-06-03, GraalVM 25)
+
+A statistically-rigorous re-measurement of the production surfaces with the JMH harness
+(`src/jmh/java/SurfaceBench`), carrying confidence intervals — complementing the legacy median-of-3
+ladder above, which is preserved as-is. The two harnesses are **not interchangeable**; compare only
+within this table.
+
+- **Machine / JVM:** AMD Ryzen 9 9950X (16C/32T, AVX-512), GraalVM 25.0.2 (Graal JIT),
+  `governor=performance` (turbo *not* disabled — non-`intel_pstate` driver), single thread.
+- **Config:** 3 forks × (3×2 s warmup + 8×2 s measurement), compiler blackholes. This is the *pragmatic*
+  config, not the multi-hour full-rigor one — treat sub-1.05× gaps cautiously and re-run longer for those.
+- **Corpus:** the 9 CDK-safe structures (excludes 3CI3); each datapoint times one whole-corpus build.
+- **Reproduce:** `./bench.sh` then `python3 bench-table.py`.
+
+`consume = AREA` (just `getTotalSurfaceArea()`):
+
+| variant | tess 2 (ms ± CI) | tess 4 (ms ± CI) | ×CDK t2 | ×CDK t4 |
+|---|---|---|---|---|
+| CDK NumericalSurface         | 191.87 ± 0.65 | 1677.94 ± 3.08 | 1.00× | 1.00× |
+| FasterNumericalSurface       | 145.48 ± 1.23 | 1385.97 ± 8.95 | 1.32× | 1.21× |
+| PackedNumericalSurface       | 14.66 ± 0.06  | 60.80 ± 0.11   | 13.09× | 27.60× |
+| DistinctPackedNumericalSurfaceV2 | 13.08 ± 0.05 | 39.62 ± 1.15 | **14.67×** | **42.35×** |
+| FloatNumericalSurface        | 13.29 ± 0.04  | 37.00 ± 0.06   | 14.43× | 45.35× |
+| DevSurfaceV18SortedCoords    | 14.89 ± 0.15  | 61.88 ± 0.24   | 12.88× | 27.12× |
+| DevSurfaceV19FlatStore       | 14.66 ± 0.07  | 59.42 ± 1.31   | 13.09× | 28.24× |
+
+`consume = POINTS` (materialize the surface points — zero-copy `surfacePointsXYZ()` where available):
+
+| variant | tess 2 (ms ± CI) | tess 4 (ms ± CI) | ×CDK t2 | ×CDK t4 |
+|---|---|---|---|---|
+| CDK NumericalSurface         | 192.27 ± 1.34 | 1727.99 ± 10.59 | 1.00× | 1.00× |
+| FasterNumericalSurface       | 144.77 ± 0.55 | 1410.46 ± 9.25  | 1.33× | 1.23× |
+| PackedNumericalSurface       | 14.64 ± 0.07  | 60.84 ± 0.08    | 13.13× | 28.40× |
+| DistinctPackedNumericalSurfaceV2 | 13.05 ± 0.07 | 40.86 ± 1.40 | **14.73×** | **42.29×** |
+| FloatNumericalSurface        | 13.27 ± 0.06  | 100.60 ± 70.52 *(outlier)* | 14.49× | — |
+| DevSurfaceV18SortedCoords    | 15.47 ± 0.20  | 69.39 ± 1.24    | 12.43× | 24.90× |
+| DevSurfaceV19FlatStore       | 14.84 ± 0.08  | 58.63 ± 1.34    | 12.96× | 29.47× |
+
+> The `FloatNumericalSurface / POINTS / tess 4` cell (100.60 ± 70.52 ms) is an unstable **outlier** — one
+> fork stalled; its AREA-mode number (37.00 ± 0.06) is clean. Re-measure before quoting it. Broadly the
+> numbers reproduce the legacy ladder: the recommended `DistinctPackedNumericalSurfaceV2` is ~14–15× CDK
+> at tess 2 and ~42× at tess 4, and `FasterNumericalSurface` ~1.2–1.3× (the reference optimized impl).
+
+---
+
 ## Hard-won lessons
 
 ### SIMD and the Java Vector API
