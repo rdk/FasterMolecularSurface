@@ -49,6 +49,7 @@ the ladder is ordered and self-documenting without 9-qualifier class names. Mean
 | 19 | `DevSurfaceV19FlatStore` | V18 + flat `double[]` point store / zero-copy `surfacePointsXYZ()` (storage only, compute-neutral) | see below | | |
 | 20 | `DevSurfaceV20TightGrid` | finer neighbor grid (cells = cutoff/2, ±2 stencil) on the V2 engine — **negative result, ~12–14% slower** | see below | | |
 | 21 | `DevSurfaceV21SimdBuild` | SIMD-vectorize the neighbor-build distance pass on the V2 engine — **bit-exact win, ~+4–5% at tess 2** (neutral at tess 4) | see below | | |
+| 22 | `DevSurfaceV22PaddedTail` | V21 (A6) + padded-tail scan (A7, no scalar remainder) — **negative result: slower than V21**, the padding costs more than the tail it removes | see below | | |
 
 Net at p2rank's operating point (tess 2): **~10.6x CDK** (V11), about **2.3x** over the first
 vectorized step (V7), all bit-for-bit identical. V12-V14 (flat output, arena) are allocation/GC
@@ -158,6 +159,18 @@ single-thread despite the build being a larger fraction there, because at 16 thr
 bandwidth-bound, so vectorizing compute helps less and the SoA repack adds some memory traffic. A modest
 but real bit-exact gain at p2rank's operating point, in line with the V16–V18 increments. (An earlier
 ~+9–11% figure was a contended-box artifact — corrected here on the idle box, a corollary to lesson 5.)
+
+**Side-branch (regression, kept as a documented negative result): `DevSurfaceV22PaddedTail` (rung 22).**
+Stacks idea A7 on V21 (A6): the occlusion scan's scalar remainder loop is removed by padding the neighbor
+scratch to a lane-width multiple with non-burying sentinels (`diff=0, thresh=+∞`), so each direction's
+neighbor scan is pure-vector (`PaddedTailVectorized256WeightedDedupOcclusionScan`). Bit-for-bit identical
+to V2 (sentinels never bury), but **slower than V21**: ~13.9 vs 12.5 ms at tess 2 single-thread (a ~11%
+regression, and slower than plain V2's 13.2), ~20.7 vs 20.0 ms at 16 threads, both with notably wider CIs.
+The padding writes (up to 3 sentinels × 4 arrays per atom) cost more than the 0–3-element scalar tail they
+remove — and that tail only ran for *surviving* directions (buried ones early-exit before it), so there was
+little to save. Lesson: **on the double (4-wide) path the scalar tail is already cheap; eliminating it by
+padding does not pay.** It may still help the float (8-wide) scan, where the tail is proportionally larger
+(see lesson 5) — untested. A6 alone (V21) remains the best bit-exact build.
 
 ---
 
