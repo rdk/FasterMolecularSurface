@@ -241,3 +241,48 @@ intrinsics deopt to boxing under concurrency at tess ≥ 3 (Phase 2) — so floa
    tess 2 / 16t (bandwidth-bound). Re-profile where build time actually goes now (grid construction vs
    distance pass vs neighbor materialization) before assuming it's tapped.
 3. **Generate new ideas** outside the scan/build dichotomy if 1–2 stall.
+
+---
+
+## Phase 4 — Lead #1 B1 (analytic per-atom SASA): cheap gate (load-immune, ran on idle box)
+
+**Hypothesis / lead.** Analytic SASA sidesteps sampling — a different algorithm that escapes the dead
+scan well; could be a fast opt-in area path. Gate first: is the gap between analytic and sampled tess-2/3
+within p2rank tolerance?
+
+**Method.** Analytic SASA is the converged limit of the dot-sampled area as tessellation refines, so
+tess-5 (2562 directions) is a faithful "analytic truth" proxy. `AnalyticGateTest` compares sampled
+tess-2/3/4 area to tess-5 over the corpus (area-only — no point keying — so it scales). 8.9 s, load 1.0.
+
+**Results vs tess-5 (≈analytic):**
+
+| tess | total area rel err | per-atom rel err mean | per-atom max |
+|---|---|---|---|
+| 2 | 3.04e-3 | 21.1% | 455% |
+| 3 | 1.63e-3 | 8.0% | 141% |
+| 4 | 5.95e-4 | 2.8% | 61% |
+
+p2rank tolerance is total ≤ 1e-4, per-atom ≤ 2%. Sampled tess-2/3 is **16–30× over on total and 4–10×
+over per-atom** vs analytic.
+
+**Verdict: B1 CLOSED (negative for this project's goals).** Three converging reasons:
+1. **Not interchangeable with the sampled surface.** Analytic and sampled differ by 0.3% total / 21%
+   per-atom at tess 2 — genuinely different numbers, well outside any drop-in tolerance. So analytic
+   cannot satisfy the bit-exact OR the tolerance-vs-sampled-oracle contract; it's a different output.
+2. **Area-only, no point cloud.** p2rank consumes surface POINTS (feature extraction); analytic SASA
+   yields per-atom scalars only. It can't serve the primary consumer.
+3. **Almost certainly slower.** Exact per-atom SASA is O(neighbors²) pairwise-arc trig (atan2/acos),
+   no SIMD; for ~24 neighbors that's ~hundreds of transcendental ops/atom vs the dot scan's vectorized
+   tests — and the dot scan is already fast. No speed win even for the area-only niche.
+
+Interesting (non-actionable) corollary: dot-sampled per-atom areas are quite inaccurate vs true SASA
+(21% mean at tess 2) — inherent to Shrake-Rupley sampling, presumably fine for p2rank (point-based,
+tuned on the sampled surface). The total area converges much faster (errors cancel) than per-atom.
+
+Kept `AnalyticGateTest` as evidence. No variant built (gate killed it cheaply). 4th consecutive close.
+
+**Next: Lead #2 — re-profile the BUILD (not the scan).** The scan is a dead well (Phases 1–3) and the
+two alt-output ideas (float tess-3 = C9; analytic = B1) are closed. The build is the remaining lever:
+A6 (SIMD build) was the last real win, the build is the larger share at tess 2 / 16t (bandwidth-bound),
+and it has NOT been re-profiled since. Start by measuring where build time actually goes now (grid
+construction vs the distance pass vs neighbor materialization), load-immune where possible.

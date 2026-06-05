@@ -91,8 +91,11 @@ Two output contracts (both legitimate; pursue both):
   gather + a per-neighbor cap→direction mapping and loses in wall-clock even when it wins on test-count.
   **Decisive lens: a scalar-test-count win must beat a 4-wide-SIMD sequential baseline (~4 scalar ≈ 1 unit
   of wall-clock; gather is strictly worse than sequential).** STOP attacking the scan.
-- **Open headroom now:** B1 analytic SASA (tolerance — a different algorithm, escapes the scan well) and
-  the BUILD (A6 was the last win; re-profile it — it's the larger share at tess 2 / 16t, bandwidth-bound).
+- **Open headroom now: the BUILD.** The scan is dead (Phases 1–3) and both alt-output ideas are closed
+  (float tess-3 = C9 confirmed Phase 2; analytic SASA = B1 closed Phase 4 — not interchangeable with the
+  sampled surface, area-only, likely slower). The build (neighbor-list construction) is the remaining
+  lever: A6/SIMD build was the last real win, it's the larger share at tess 2 / 16t (bandwidth-bound),
+  and it has NOT been re-profiled since. That's the next target.
 
 ## Prioritized leads (tess 2 & 3 only) — re-rank each phase
 
@@ -104,15 +107,19 @@ Two output contracts (both legitimate; pursue both):
   as §1b; its distinct survivor angle (survivors = 25% of tess-3 scan tests, DCLM could cut ~40×) is real
   but already inside Phase 1's 28%-of-current neighbor-major total, which loses to the SIMD baseline. Do
   not re-try.
-1. **B1 — analytic per-atom SASA (backlog B1, TOLERANCE).** TOP LEAD — a different algorithm, escapes the
-   dead scan well. **Cheap load-immune gate FIRST:** implement only the analytic per-atom *area*
-   (inclusion-exclusion of pairwise cap overlaps / Gauss-Bonnet arcs — correctness, not speed), compare
-   per-atom + total area vs sampled tess-2/3 over the corpus. Pass = gap within p2rank tolerance (total
-   ≤ 1e-4 rel, per-atom ≤ 2%); fail = closed cheaply. Only build a fast variant if the gate passes.
-2. **Re-profile the BUILD (not the scan).** A6 (SIMD build) was the last win; the build is the larger
-   share at tess 2 / 16t (bandwidth-bound). Measure where build time now goes (grid vs distance pass vs
-   neighbor materialization) before assuming it's tapped. `-prof gc` + ScanInstrumentation-style counts.
-3. **Generate your own** outside the scan/build dichotomy if 1–2 stall (e.g. backlog §3 deep-research prompt).
+- ~~**B1 — analytic per-atom SASA.**~~ **CLOSED (Phase 4).** Gate showed analytic ≠ sampled (0.3% total /
+  21% per-atom at tess 2, way outside any drop-in tolerance); area-only (no points p2rank needs); likely
+  slower (O(neighbors²) arc trig, no SIMD). Can't accelerate or replace the surface. Do not re-try.
+1. **Re-profile the BUILD — TOP LEAD.** The only remaining lever. A6 (SIMD build, V21) was the last win
+   and the build is the larger share at tess 2 / 16t (bandwidth-bound, lesson 12). **De-risk first
+   (mostly load-immune):** read the build path (`*CellGrid*NeighborList`, `SimdDistanceCellGridNeighborList`,
+   `DevSurfaceV21SimdBuild` wiring) and break build time into phases — grid construction, the d²<sumR²
+   distance pass, neighbor materialization/sort. Then one idle-box `-prof gc` + timing run isolating build
+   vs scan (e.g. compare a tess where scan≈0 work, or instrument). Find the dominant build sub-cost BEFORE
+   proposing a variant. Candidate levers once profiled: cheaper grid binning, fewer passes, better memory
+   layout for the distance pass (it's bandwidth-bound, so traffic reduction is the lever A6/C1 exploited).
+2. **Generate your own** if the build re-profile shows no headroom (e.g. backlog §3 deep-research prompt,
+   or the deployment-shaped C4/C5 batch ideas — though those are out of the tess-2/3 single-protein scope).
 
 ## Per-phase workflow
 
@@ -152,8 +159,13 @@ tess-2-only; double V3 owns tess 3. Updated lesson 5, backlog C9, CLAUDE.md.*
 already inside Phase 1's neighbor-major total, which loses to the SIMD baseline. Wrote a state-of-the-search
 summary in LOG: THE SCAN IS A DEAD WELL — stop attacking it.*
 
-*Next agent: start at Lead #1 = B1 (analytic per-atom SASA, TOLERANCE — a different algorithm that escapes
-the scan well). Cheap load-immune gate FIRST: a correct (not fast) analytic per-atom area, compared vs
-sampled tess-2/3 over the corpus — does the gap fit p2rank tolerance? If the analytic gate is too heavy to
-stand up quickly, fall to Lead #2 (re-profile the BUILD). Timing runs need load < 1.5 (it's been swinging
-1.5–25 on this shared box — always poll /proc/loadavg first; counting/gating work is load-immune).*
+*Phase 4 (B1 analytic SASA): CLOSED — gate showed analytic ≠ sampled (0.3%/21% gap at tess 2), area-only,
+likely slower. 4th consecutive close. The scan AND both alt-output ideas are now exhausted.*
+
+*Next agent: start at Lead #1 = re-profile the BUILD (the only remaining lever; the scan is a dead well).
+De-risk load-immune first: read the build path and decompose build time (grid / distance pass / neighbor
+materialization); then ONE idle-box `-prof gc` + timing run to isolate the dominant build sub-cost before
+proposing any variant. Heed lesson 12 (build is bandwidth-bound at 16t → traffic reduction is the lever,
+as A6/C1 found) and the Phase-1 meta-lesson (count wins must beat the SIMD+sequential baseline). Timing
+needs load < 1.5 — this shared box swings 1.0–25, so poll /proc/loadavg first; counting/reading is
+load-immune. If the build also proves tapped, switch to generating fresh ideas (backlog §3).*
