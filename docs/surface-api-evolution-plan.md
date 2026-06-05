@@ -1,12 +1,22 @@
 # Surface API Evolution Plan
 
-Forward-looking design for (1) a future-proof factory that auto-selects a surface implementation, and
-(2) generalizing the engine so a new family of **custom point-sampling** surfaces (density-per-Å²
-instead of tessellation) can be added without breaking the public API.
+**Direction:** evolve this from "a faster CDK `NumericalSurface`" into a **standalone, high-performance
+molecular-surface library**. Bit-exact CDK reproduction was the bootstrap and stays as one fidelity mode
+(validation oracle + compat), but it is no longer the destination. The forward-looking design covers:
 
-This is a plan, not shipped code. The guiding principle: **make the public factory API additive-only
-forever** by generalizing the two seams that are currently tessellation-shaped *before* the new
-implementations land.
+1. A future-proof factory that auto-selects a surface implementation (express *what*, not *how*).
+2. Generalizing the engine so a new family of **custom point-sampling** surfaces (density-per-Å² instead
+   of tessellation) can be added without breaking the public API.
+3. **Decoupling the public API from CDK / `javax.vecmath` types** — accept plain coordinates + radii and
+   return primitive arrays, so the library is usable without a CDK dependency (CDK becomes an optional
+   adapter, not a hard dependency of the core API).
+4. **Richer surface output** beyond points + per-atom areas — e.g. per-point normals, atom-of-origin, and
+   exposed/buried classification — for downstream consumers (p2rank and others).
+
+This is a plan, not shipped code. The guiding principle: **make the public API additive-only forever** by
+generalizing the tessellation-shaped seams *before* the new implementations land. Items 1–2 are detailed
+below; items 3–4 are tracked here as committed aims and will get their own design sections as they are
+scoped (the new factory's `SurfaceSpec`/`Access` and the per-point output seam are the natural anchors).
 
 ---
 

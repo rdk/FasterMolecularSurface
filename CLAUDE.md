@@ -12,6 +12,26 @@ A Java library with optimized implementations of CDK's `NumericalSurface`, behin
 GraalVM 25. Recommended default surface is `DistinctPackedNumericalSurfaceV3` (see `README.md`); the full
 optimization history is `docs/performance-lessons.md`.
 
+**Where this is going (the durable goal).** Bit-exact reproduction of CDK was the bootstrap, not the
+destination. The project is evolving from "a faster CDK `NumericalSurface`" into a **standalone,
+high-performance molecular-surface library** in its own right. The planned direction (design in
+`docs/surface-api-evolution-plan.md`):
+- **A new capability-based public API** — a `MolecularSurfaces.create(mol, SurfaceSpec)` factory that
+  expresses *what* the caller needs (resolution / fidelity / access) and auto-selects the implementation,
+  plus a path to **decouple the API from CDK/`javax.vecmath` types** (accept plain coordinates+radii,
+  return primitive arrays) so the library is usable without a CDK dependency.
+- **Richer surface output** beyond points + per-atom areas (e.g. per-point normals, atom-of-origin,
+  classification) for downstream consumers.
+- **A new surface family beyond tessellation** — custom **density-based point sampling** (points/Å² via a
+  `SpherePointSet`, e.g. deterministic Fibonacci/spiral), generalizing the engine's resolution + per-point
+  area seams.
+- **CDK bit-exactness stays as ONE fidelity mode** (`CDK_EXACT` / `AREA_EXACT`), maintained first-class
+  alongside the new native API and the approximate/sampling tiers — a compatibility + validation oracle,
+  no longer the project's ceiling.
+
+The frozen-artifact rules below still govern existing implementations; new directions land as **new**
+seams/surfaces (never in-place edits), and the public API stays **additive-only**.
+
 ## Build / test / benchmark
 
 - `./gradlew build` — assemble + check (compile + the default test scope).
