@@ -22,6 +22,10 @@ state: **there is no active research round.**
 
 ## Arming a new round
 
+**Preferred: run the `autoresearch-new-round` skill** (`/autoresearch-new-round <scope>`) — it does all of
+the below (reads META.md, confirms scope, scaffolds `runs/<id>/`, points this dispatcher at it, commits).
+
+By hand, equivalently:
 1. `cp templates/KICKOFF.template.md runs/<YYYY-MM-DD>_<slug>/KICKOFF.md`; fill in Mission, Scope, Current
    state, and the ranked Leads (seed "Current state" from `META.md` §1 closed leads + the prior REPORT).
 2. Start `runs/<id>/LOG.md` (append-only journal; first entry = Phase 0 setup).

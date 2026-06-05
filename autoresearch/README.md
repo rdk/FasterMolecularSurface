@@ -30,9 +30,10 @@ A round id is `<YYYY-MM-DD>_<short-slug>` (e.g. `2026-06-05_tess2-3-throughput`)
 
 ## Lifecycle of a round
 
-1. **Arm.** Copy `templates/KICKOFF.template.md` to `runs/<id>/KICKOFF.md`; fill in the mission, scope,
-   current state, and the ranked leads. Start `runs/<id>/LOG.md` (append-only journal). Point
-   `KICKOFF.md` (dispatcher) at the active round.
+1. **Arm.** Run the **`autoresearch-new-round`** skill (`/autoresearch-new-round <scope>`) — it reads
+   `META.md`, confirms the scope, copies `templates/KICKOFF.template.md` to `runs/<id>/KICKOFF.md`, fills in
+   the mission/state/leads (seeded with the closed leads), starts `runs/<id>/LOG.md`, points the dispatcher
+   `KICKOFF.md` at the active round, and commits. (Or do those steps by hand.)
 2. **Run** (per-phase loop, see the template's workflow): pick the top lead → write a LOG phase entry
    (hypothesis · cheap kill-experiment · expected payoff) → **de-risk cheaply first** (load-immune
    counting/instrumentation, a `-prof gc` probe, a tiny prototype) → scaffold a new variant only if it
