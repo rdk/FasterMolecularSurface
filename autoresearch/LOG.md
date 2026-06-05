@@ -388,3 +388,25 @@ deployment-shaped) or need genuinely new external input.
 **Next: the only productive moves left are (a) the backlog §3 deep-research prompt for novel approaches,
 or (b) accept the surface is at a strong local optimum and stop.** No more cheap in-tree kill-experiments
 remain for tess 2/3 single-protein throughput.
+
+---
+
+## Phase 7 — generative: deep-research for novel approaches (backlog §3, scoped to the still-open questions)
+
+All cheap in-tree leads are exhausted (Phases 1–6, 0 promotable wins; surface at a strong local optimum).
+Per the kickoff guardrail, the productive move is generative: source approaches NOT yet tried. The §3
+prompt's Q1–Q4 (buried-atom test, bitmask, DCLM, analytic) are now empirically CLOSED this session, so
+this run is scoped to the open external questions:
+- Q5: power-diagram / weighted-alpha-complex exact SASA O(N log N), and the hard dependency — is a robust
+  3D weighted/regular Delaunay usable from Java (pure-Java or JNI)?
+- Q6: neighbor-list reuse (Verlet skin / sort-and-sweep) — applicability given coords differ per protein.
+- Q7: what do the FASTEST open-source SASA impls (FreeSASA, RustSASA, GROMACS, MSMS, NanoShaper, dr_sasa,
+  PowerSASA, …) do that an already-dedup'd SIMD cell-list Shrake-Rupley kernel does NOT have — especially
+  spatial reordering (Morton/Hilbert) for the bandwidth-bound build, whole-atom culling, or batch reuse.
+
+Hypothesis: most likely outcomes are (a) confirmation the kernel is near-SOTA for sampled SASA, or (b) one
+new accelerator — the prime candidate being atom reordering along a space-filling curve for the
+bandwidth-bound distance pass (note: V18 SortedCoords already tried coordinate sorting — check its result
+before treating Morton as novel). Each returned idea gets a cheap in-tree kill-experiment, held to the
+Phase-1 lens (beat 4-wide-SIMD sequential) and the tess-3 share insight (build-only wins dilute; C9 blocks
+float). Running the `deep-research` skill now.
