@@ -528,3 +528,20 @@ manufacture churn, which the kickoff explicitly forbids.
 directions all require widening the scope: whole-dataset batch/GPU throughput (C4); intra-protein
 parallelism for single-large-protein latency (C5); a native power-diagram path for an AREA-ONLY consumer;
 or a changed operating point / output contract. Surfacing that decision to the user and stopping the loop.
+
+---
+
+## Autoresearch CONCLUDED (user decision, 2026-06-05)
+
+Asked the scope question after Phase 8; user chose **"Stop — accept the optimum."** No scope change (no
+batch/GPU C4, no latency parallelism C5, no area-only path). The effort is concluded.
+
+**Final state.** The tess-2/3 single-protein point-set surface is at a confirmed strong local optimum
+(8 phases, 0 promotable wins, all leads + the real POINTS consumer pattern measured and documented).
+Recommended surfaces stand, unchanged: bit-exact default `DistinctPackedNumericalSurfaceV3`; tess-2 float
+`FloatNumericalSurfaceV2`. No production code changed this entire effort — only test-scope instrumentation,
+docs, and the autoresearch journal.
+
+To reopen: re-arm `/loop execute the autoresearch kickoff` only after a scope/contract change (batch mode,
+single-protein latency, an area-only consumer, or a new operating point). Read this SESSION CONCLUSION and
+the `scan-is-a-dead-well` memory first; do not re-try any closed lead.
