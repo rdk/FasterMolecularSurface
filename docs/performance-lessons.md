@@ -311,7 +311,7 @@ within this table.
    > tess ≥ 4.** The original lesson holds at tess 2; it overgeneralized to tess 3–4 / many threads.
    >
    > **✅ CONFIRMED + extended to tess 3 (2026-06-05, autoresearch Phase 2; raw:
-   > `autoresearch/results/phase2-float-tess3.txt`).** The boxing hypothesis is now confirmed with
+   > `autoresearch/archive/2026-06-05_tess2-3-throughput/results/phase2-float-tess3.txt`).** The boxing hypothesis is now confirmed with
    > `-prof gc` alloc.rate.norm, and the collapse already happens at **tess 3** (the claim above said
    > tess ≥ 4). `FloatNumericalSurfaceV2` vs `DISTINCT_PACKED_V3` @ tess 3, ms/op (float÷double):
    > 1t 21.1÷21.6 = 0.98×; **4t 163÷22.9 = 7.2×; 8t 302÷24.3 = 12.5×; 16t 611÷26.7 = 22.9×**. The
@@ -472,7 +472,7 @@ within this table.
   under-count). **Meta-lesson: counting headroom ≠ wall-clock headroom when the baseline is vectorized**
   — the fully-buried atoms are cheap precisely because their directions bury fast, and the per-direction
   early-exit + last-occluder hint already minimizes scalar tests *and* vectorizes. (Same trap as A1/A4,
-  now quantified.) See `autoresearch/LOG.md` Phase 1.
+  now quantified.) See `autoresearch/archive/2026-06-05_tess2-3-throughput/LOG.md` Phase 1.
 
 ---
 

@@ -78,7 +78,7 @@ realistic candidate scan is 18.6%/28% of current scalar tests, done with scatter
 per-neighbor sqrt+3-divides mask-build + a large LUT thrashing shared L3 at 16–32 threads — slower than
 the SIMD baseline. Pure-OR (approximate) form also dead (drastic area under-count). Meta-lesson:
 counting headroom ≠ wall-clock headroom when the baseline is vectorized. Full numbers + reasoning in
-`autoresearch/LOG.md` Phase 1 and the "Explicitly not worth doing" section of `performance-lessons.md`.
+`autoresearch/archive/2026-06-05_tess2-3-throughput/LOG.md` Phase 1 and the "Explicitly not worth doing" section of `performance-lessons.md`.
 The original (now-refuted) write-up follows for the record.
 
 **Original status (refuted): open, scoped, the single biggest remaining bit-exact opportunity.**
@@ -149,7 +149,7 @@ Deferred / deployment-shaped:
   (not generic EA), and the multithread collapse is those float (8-lane) intrinsics failing under
   concurrency → boxing fallback. **No source fix** (vectors already method-local; a scalar-float scan
   forfeits the SIMD reason). Float surfaces are tess-2-only; double V3 is the tess-3 answer. Raw:
-  `autoresearch/results/phase2-float-tess3.txt`; perf-lessons lesson 5. Original (now-superseded) note:
+  `autoresearch/archive/2026-06-05_tess2-3-throughput/results/phase2-float-tess3.txt`; perf-lessons lesson 5. Original (now-superseded) note:
 - **C9 (original) — Float-scan tess-4 multi-thread collapse — PARTLY DIAGNOSED.** ~32× slower at tess 4 / 16
   threads (38→1230 ms; double scan flat); per-op time ∝ thread count. **Ruled out:** GC/heap (4g→16g
   unchanged), AVX-512 downclock (UseAVX=2 unchanged), denormals (magnitudes), shared state. **Leading
