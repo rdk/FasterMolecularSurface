@@ -291,6 +291,17 @@ within this table.
    earlier 1.45x figure came from a 10-build-per-round micro-bench and was a warmup artifact; the
    200-build median put it at ~1.12x. Corollary to lesson 15.)
 
+   > **⚠ Correction (2026-06, 9950X / GraalVM 25): the "uniformly across 1 and 16 threads" claim is
+   > wrong at high tessellation.** Re-measurement found the float occlusion scan suffers a **severe
+   > thread-scaling collapse at tess 4**: per-corpus build time goes 38 ms (1 thread) → 182 → 622 → **1230
+   > ms (16 threads)**, ~32× slower than the double scan (which is flat: 38→42 ms). The collapse is
+   > monotonic in thread count and absent at tess 2 (where the float surfaces *do* win at 1 and 16
+   > threads). It affects both `FloatNumericalSurface` and `FloatNumericalSurfaceV2` (shared scan); the
+   > double path is immune. Suspected cause: **denormal-float microcode assists** (more frequent at tess
+   > 4's 642 directions, and they serialize across threads) or AVX float downclock — unconfirmed (needs a
+   > FTZ/perf experiment). **Practical guidance: use the float surfaces only at tess 2; use double-precision
+   > V3 at tess ≥ 4.** The original lesson holds at tess 2; it overgeneralized to tess 3–4 / many threads.
+
 ### Algorithmic wins
 
 6. **Deduplicate tessellation directions (the biggest single win).** CDK's icosahedral tessellation

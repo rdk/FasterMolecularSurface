@@ -57,7 +57,8 @@ side by side preserves the comparison; rewriting one invalidates its recorded be
 - The named production surfaces: `FasterNumericalSurface`, `PackedNumericalSurface`,
   `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctPackedNumericalSurfaceV3`
   (the recommended default), `DistinctFasterNumericalSurface`, `FloatNumericalSurface`,
-  `FloatNumericalSurfaceV2` (the recommended approximate/float variant: float build + float scan).
+  `FloatNumericalSurfaceV2` (recommended approximate/float variant **at tess 2**: float build + float scan;
+  the float scan collapses ~32× at tess ≥ 4 with many threads — use double-precision V3 there).
 - The concrete strategy implementations they wire together once benchmarked (see the closure rule below).
 
 **Classification rule — use this, NOT "is it in the perf doc".** A concrete class is frozen iff it is

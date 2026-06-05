@@ -128,6 +128,11 @@ Deferred / deployment-shaped:
   the per-protein-per-core throughput path lesson 14 chose).
 - **C6 — Solvent-radius-sweep reuse** (subset of B2): reuse the grid + pruned pairs across a radius sweep on
   fixed coordinates. Bit-exact; gated by whether p2rank actually sweeps.
+- **C9 — Diagnose the float-scan tess-4 multi-thread collapse.** Re-measurement found the float
+  occlusion scan goes ~32× slower at tess 4 / 16 threads (38→1230 ms; double scan flat). Suspected
+  denormal-float microcode assists or AVX downclock. Confirm via `perf stat` (fp-assist counters) or a
+  flush-to-zero (FTZ/DAZ) experiment; if denormals, set FTZ for the scan thread or clamp tiny floats.
+  Until fixed, the float surfaces are tess-2-only. (perf-lessons lesson 5 correction.)
 - **C7 — Boundary-adaptive tessellation** / **C8 — Monte-Carlo importance-sampled directions** — approximate
   fast modes; non-bit-exact, need the tolerance scorecard.
 

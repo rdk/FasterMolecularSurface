@@ -68,13 +68,17 @@ results via the scalar fallback, only slower.
   both wanted.
 - **`DistinctPackedNumericalSurfaceV2`** — the previous recommended surface; identical output to V3 with a
   scalar (non-vectorised) neighbour build. Use only to reproduce the exact pre-V3 timing baseline.
-- **`FloatNumericalSurfaceV2`** — the fastest **approximate** surface (opt-in): both the occlusion scan's
-  verdict *and* the SIMD neighbour build's distance test are single precision, so it beats the bit-exact
-  default V3 at every tessellation level (≈1.3% at tess 2, ≈5% at tess 4 single-thread; more on GraalVM)
-  at a small, tolerance-bounded accuracy cost (total-area error ≤ 1e-4). Not bit-exact — use when an
-  approximate surface is acceptable. Prefer it over `FloatNumericalSurface`.
+- **`FloatNumericalSurfaceV2`** — the fastest **approximate** surface (opt-in) **at tessellation level 2**
+  (p2rank's operating point): both the occlusion scan's verdict *and* the SIMD neighbour build's distance
+  test are single precision, beating the bit-exact default V3 by ≈1.3% at tess 2 (single and 16 threads),
+  at a small tolerance-bounded accuracy cost (total-area error ≤ 1e-4). Not bit-exact. Prefer it over
+  `FloatNumericalSurface` at tess 2. **⚠ Do not use the float surfaces at tess ≥ 4 with many threads:** the
+  float occlusion scan suffers a severe thread-scaling collapse there (≈32× slower than V3 at tess 4 / 16
+  threads on a 16-core Zen5 — see `docs/performance-lessons.md` lesson 5), a float-path limitation shared
+  with `FloatNumericalSurface`; the double-precision V3 scales cleanly and is the right choice for tess ≥ 4.
 - **`FloatNumericalSurface`** — the original single-precision-verdict variant (float *scan* only; the build
-  stays double). Superseded by `FloatNumericalSurfaceV2`; kept as the prior float baseline.
+  stays double). Superseded by `FloatNumericalSurfaceV2` at tess 2; subject to the same tess≥4 multi-thread
+  collapse. Kept as the prior float baseline.
 - **`DistinctFasterNumericalSurface`** — the `FasterNumericalSurface`-based counterpart of the distinct
   surfaces: the same CDK-exact pipeline as `FasterNumericalSurface`, but emitting one point per distinct
   direction (areas bit-for-bit identical, point set deduplicated). Primarily a reference/cross-check for
