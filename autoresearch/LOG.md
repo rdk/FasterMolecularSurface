@@ -332,3 +332,59 @@ wins there (it should: build traffic cut + no C9), it's a promotable tess-3 tole
 from FloatNumericalSurfaceV2 (which collapses at tess 3). **Next: benchmark V24 vs V3 at tess 3, -t 1/16
 (idle box), + a tess-3 tolerance gate before any speed claim.** Grabbing the current idle window for the
 benchmark.
+
+---
+
+## Phase 6 — C1 float-build (V24) at tess 3: tolerance gate + benchmark (IN PROGRESS)
+
+Testing whether `DevSurfaceV24FloatBuild` (float-precision SIMD neighbor build + DOUBLE scan, idea C1) is
+a promotable tess-3 win: it cuts the bandwidth-bound distance pass's coordinate traffic (the 90%-of-build
+hot phase, Phase 5) AND keeps the double scan so it has no C9 collapse at tess 3.
+
+**Tolerance gate (load-immune, `FloatBuildToleranceGateTest`, vs V3 over the corpus): PASS — and stronger
+than required.** Total area rel err, per-atom rel err, and point-set symdiff are ALL exactly 0.000e+00 at
+tess 2 AND tess 3. The float build produces a BIT-IDENTICAL neighbor set to the double build on every
+corpus structure — the float vs double `d²<sumR²` test never disagrees at these atom spacings. So V24 is
+empirically exact on the corpus (still nominally "tolerance" since a pathological boundary pair could flip,
+but zero error observed). Accuracy is a non-issue; the question reduces to speed.
+
+**Benchmark (idle box, running): V24 vs V3 @ tess 3, -t 1/16, consume=AREA, -f 3.** Results pending.
+
+### Phase 6 — RESULTS (idle box, load-before 1.16/1.95)
+
+V24 (float build + double scan) vs V3 @ tess 3, consume=AREA, -f 3 (raw:
+`autoresearch/results/phase6-floatbuild-tess3.txt`):
+
+| threads | V24 ms/op | V3 ms/op | Δ |
+|---|---|---|---|
+| 1  | 21.178 ± 0.264 | 21.537 ± 0.134 | V24 ~1.7% faster (CIs barely touch) |
+| 16 | 26.923 ± 1.808 | 26.540 ± 0.147 | V24 ~1.4% slower, V24 noisy (bimodal) |
+
+**Verdict: NEGATIVE for tess-3 promotion.** A marginal single-thread gain (~1.7%) that vanishes — turns
+slightly negative and noisy — at 16t, the deployment regime. The mechanism is the key insight: **at tess 3
+the build is a SMALLER fraction of total** (the double scan over 162 directions dominates), so a build-only
+optimization (C1/float build) dilutes to nothing. C1 wins at tess 2 *precisely because* the build is the
+larger share there (~47%); that premise doesn't hold at tess 3. V24 stays a tess-2 variant; no tess-3
+promotion. (Tolerance gate had passed bit-identically, so accuracy was never the issue — purely a
+speed-share dilution.) Kept `FloatBuildToleranceGateTest` as evidence.
+
+---
+
+## State of the search — round 2 (after 6 phases, 0 promotable wins)
+
+The tess-2/3 surface is **well-optimized**; this round found no shippable win, but tightened the map:
+- **Scan: dead well** (Phases 1–3) — SIMD + hint + early-exit is near-optimal; every spatial-narrowing
+  alternative loses to it (gather vs sequential-SIMD).
+- **Build: tapped** (Phase 5) — distance pass is 90% and already SIMD (A6); the candidate waste (6.27×,
+  16% survival) is inherent uniform-grid geometry and the tighter-grid fix is the A2 negative.
+- **Float precision** is the only SIMD-widening lever, but: float SCAN collapses at tess ≥ 3 (C9, Phase 2),
+  and float BUILD (C1) is a tess-2-only win — it dilutes at tess 3 where the scan dominates (Phase 6).
+- **Alt algorithms:** analytic SASA (B1) closed — different output, area-only, slower.
+
+**The structural reason there's no tess-3 win left:** the double scan is the dominant, already-optimal
+tess-3 cost, and float can't widen it (C9). The remaining ideas are out-of-scope (batch/GPU C4–C5,
+deployment-shaped) or need genuinely new external input.
+
+**Next: the only productive moves left are (a) the backlog §3 deep-research prompt for novel approaches,
+or (b) accept the surface is at a strong local optimum and stop.** No more cheap in-tree kill-experiments
+remain for tess 2/3 single-protein throughput.

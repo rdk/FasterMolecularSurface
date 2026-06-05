@@ -1,0 +1,16 @@
+Phase 6: V24 (float build + double scan, C1) vs DISTINCT_PACKED_V3 @ tess 3, consume=AREA
+jar=lib/build/libs/faster-molecular-surface-1.5-jmh.jar  start=2026-06-05T09:56:58+02:00
+
+===== threads=1  load-before=1.16 1.06 1.32 3/1831 897625 =====
+Benchmark                 (consume)  (tess)         (variantId)  Mode  Cnt   Score   Error  Units
+SurfaceBench.buildCorpus       AREA       3                 V24  avgt   18  21.178 ± 0.264  ms/op
+SurfaceBench.buildCorpus       AREA       3  DISTINCT_PACKED_V3  avgt   18  21.537 ± 0.134  ms/op
+----- threads=1  load-after=1.95 1.41 1.42 3/1837 899939 -----
+
+===== threads=16  load-before=1.95 1.41 1.42 2/1837 899944 =====
+Benchmark                 (consume)  (tess)         (variantId)  Mode  Cnt   Score   Error  Units
+SurfaceBench.buildCorpus       AREA       3                 V24  avgt   18  26.923 ± 1.808  ms/op
+SurfaceBench.buildCorpus       AREA       3  DISTINCT_PACKED_V3  avgt   18  26.540 ± 0.147  ms/op
+----- threads=16  load-after=16.39 7.33 3.61 3/1833 901787 -----
+
+DONE end=2026-06-05T10:01:06+02:00
