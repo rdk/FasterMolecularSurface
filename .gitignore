@@ -23,3 +23,5 @@ replay_pid*
 build
 
 .idea
+# transient Claude Code /loop session state
+.claude/scheduled_tasks.lock
