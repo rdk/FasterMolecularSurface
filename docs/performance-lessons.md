@@ -298,9 +298,17 @@ within this table.
    > monotonic in thread count and absent at tess 2 (where the float surfaces *do* win at 1 and 16
    > threads). It affects both `FloatNumericalSurface` and `FloatNumericalSurfaceV2` (shared scan); the
    > double path is immune. Suspected cause: **denormal-float microcode assists** (more frequent at tess
-   > 4's 642 directions, and they serialize across threads) or AVX float downclock — unconfirmed (needs a
-   > FTZ/perf experiment). **Practical guidance: use the float surfaces only at tess 2; use double-precision
-   > V3 at tess ≥ 4.** The original lesson holds at tess 2; it overgeneralized to tess 3–4 / many threads.
+   > 4's 642 directions. **Diagnosed (C9):** the collapse is real (idle box, reproducible) and per-op time
+   > scales *linearly with thread count* (38/182/622/1230 ms at 1/4/8/16 threads → aggregate throughput is
+   > constant). **Ruled out by measurement:** GC/heap (`-Xmx 4g→16g` left op-time at ~1230 ms, only GC count
+   > changed), AVX-512 downclock (`-XX:UseAVX=2` unchanged), denormals (values are O(1–1000), not subnormal),
+   > and shared software state (immutable `DirectionMapping`, per-thread scan scratch). **Leading hypothesis
+   > (unconfirmed, needs per-site allocation profiling):** the `FloatVector` objects are not scalar-replaced
+   > (escape-analysis failure), so each op boxes — FLOAT allocates ~27 GB/s vs the double scan's ~8.9 GB/s —
+   > and at 16 threads × 642 directions that allocation traffic saturates memory bandwidth (heap size is
+   > irrelevant; it's the allocation *rate*). The double scan scalar-replaces its vectors (lesson 3), so V3
+   > is flat. **Practical guidance: use the float surfaces only at tess 2; use double-precision V3 at
+   > tess ≥ 4.** The original lesson holds at tess 2; it overgeneralized to tess 3–4 / many threads.
 
 ### Algorithmic wins
 
