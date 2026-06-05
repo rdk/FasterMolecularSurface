@@ -91,11 +91,14 @@ Two output contracts (both legitimate; pursue both):
   gather + a per-neighbor cap→direction mapping and loses in wall-clock even when it wins on test-count.
   **Decisive lens: a scalar-test-count win must beat a 4-wide-SIMD sequential baseline (~4 scalar ≈ 1 unit
   of wall-clock; gather is strictly worse than sequential).** STOP attacking the scan.
-- **Open headroom now: the BUILD.** The scan is dead (Phases 1–3) and both alt-output ideas are closed
-  (float tess-3 = C9 confirmed Phase 2; analytic SASA = B1 closed Phase 4 — not interchangeable with the
-  sampled surface, area-only, likely slower). The build (neighbor-list construction) is the remaining
-  lever: A6/SIMD build was the last real win, it's the larger share at tess 2 / 16t (bandwidth-bound),
-  and it has NOT been re-profiled since. That's the next target.
+- **BUILD: re-profiled (Phase 5) and TAPPED.** Distance pass is 90% of build and already SIMD (A6); the
+  candidate waste (6.27 tests/survivor, 16% survive) is inherent uniform-grid geometry and the tighter-grid
+  fix is the A2 negative. Float build (C1/V24) is bit-identical on the corpus but a tess-2-only win — it
+  dilutes at tess 3 where the scan dominates (Phase 6 negative).
+- **ALL IN-TREE LEADS FOR TESS-2/3 SINGLE-PROTEIN THROUGHPUT ARE EXHAUSTED (6 phases, 0 promotable wins).**
+  The surface is at a strong local optimum. Structural reason there's no tess-3 win left: the double scan is
+  the dominant, already-optimal tess-3 cost, and float can't widen it (C9). Remaining moves are generative
+  (backlog §3 deep-research prompt for novel approaches) or out-of-scope (batch/GPU C4–C5).
 
 ## Prioritized leads (tess 2 & 3 only) — re-rank each phase
 
@@ -110,16 +113,21 @@ Two output contracts (both legitimate; pursue both):
 - ~~**B1 — analytic per-atom SASA.**~~ **CLOSED (Phase 4).** Gate showed analytic ≠ sampled (0.3% total /
   21% per-atom at tess 2, way outside any drop-in tolerance); area-only (no points p2rank needs); likely
   slower (O(neighbors²) arc trig, no SIMD). Can't accelerate or replace the surface. Do not re-try.
-1. **Re-profile the BUILD — TOP LEAD.** The only remaining lever. A6 (SIMD build, V21) was the last win
-   and the build is the larger share at tess 2 / 16t (bandwidth-bound, lesson 12). **De-risk first
-   (mostly load-immune):** read the build path (`*CellGrid*NeighborList`, `SimdDistanceCellGridNeighborList`,
-   `DevSurfaceV21SimdBuild` wiring) and break build time into phases — grid construction, the d²<sumR²
-   distance pass, neighbor materialization/sort. Then one idle-box `-prof gc` + timing run isolating build
-   vs scan (e.g. compare a tess where scan≈0 work, or instrument). Find the dominant build sub-cost BEFORE
-   proposing a variant. Candidate levers once profiled: cheaper grid binning, fewer passes, better memory
-   layout for the distance pass (it's bandwidth-bound, so traffic reduction is the lever A6/C1 exploited).
-2. **Generate your own** if the build re-profile shows no headroom (e.g. backlog §3 deep-research prompt,
-   or the deployment-shaped C4/C5 batch ideas — though those are out of the tess-2/3 single-protein scope).
+- ~~**Re-profile the BUILD.**~~ **DONE (Phase 5) → TAPPED;** float-build-at-tess-3 (Phase 6) negative. See
+  Current state. Distance pass 90%, already SIMD; tighter-grid is the A2 negative; float build dilutes at
+  tess 3.
+1. **Source NOVEL approaches — TOP LEAD (generative).** All in-tree incremental leads are exhausted. Run the
+   backlog §3 deep-research prompt (use the `deep-research` skill, or WebSearch) to find approaches NOT yet
+   tried: e.g. published fast-SASA methods that produce a POINT SET (not just area) and could beat
+   Shrake-Rupley dot-sampling at tess 2/3 — power diagrams / additively-weighted Voronoi (alpha-complex)
+   restricted to the accessible surface, the reduced-surface / Connolly construction, GPU-batch only if the
+   scope widens. For EACH returned idea: does it produce the point set p2rank needs? is it plausibly faster
+   than the current SIMD scan+build at tess 2/3 / 16t? cheap kill-experiment BEFORE building. Hold every
+   idea to the Phase-1 meta-lens (must beat a 4-wide-SIMD sequential baseline) and the tess-3 share insight
+   (build-only wins dilute; the double scan dominates tess 3 and float can't widen it, C9).
+2. **Or conclude.** If the deep-research yields nothing that clears the bar, the honest result is: the
+   tess-2/3 single-protein surface is at a strong local optimum (default `DistinctPackedNumericalSurfaceV3`;
+   float `FloatNumericalSurfaceV2` at tess 2). Record that and stop, rather than manufacture marginal churn.
 
 ## Per-phase workflow
 
@@ -162,10 +170,20 @@ summary in LOG: THE SCAN IS A DEAD WELL — stop attacking it.*
 *Phase 4 (B1 analytic SASA): CLOSED — gate showed analytic ≠ sampled (0.3%/21% gap at tess 2), area-only,
 likely slower. 4th consecutive close. The scan AND both alt-output ideas are now exhausted.*
 
-*Next agent: start at Lead #1 = re-profile the BUILD (the only remaining lever; the scan is a dead well).
-De-risk load-immune first: read the build path and decompose build time (grid / distance pass / neighbor
-materialization); then ONE idle-box `-prof gc` + timing run to isolate the dominant build sub-cost before
-proposing any variant. Heed lesson 12 (build is bandwidth-bound at 16t → traffic reduction is the lever,
-as A6/C1 found) and the Phase-1 meta-lesson (count wins must beat the SIMD+sequential baseline). Timing
-needs load < 1.5 — this shared box swings 1.0–25, so poll /proc/loadavg first; counting/reading is
-load-immune. If the build also proves tapped, switch to generating fresh ideas (backlog §3).*
+*Phase 5 (re-profile build): build is TAPPED — distance pass 90%, already SIMD; candidate waste is inherent
+grid geometry; tighter-grid is the A2 negative.*
+
+*Phase 6 (float build C1/V24 at tess 3): NEGATIVE — bit-identical on corpus but only ~1.7% faster at 1t and
+neutral/noisy at 16t; build-only wins dilute at tess 3 where the double scan dominates. V24 stays tess-2.*
+
+*State after 6 phases: 0 promotable wins; the tess-2/3 single-protein surface is at a strong local optimum.
+Scan is a dead well, build is tapped, float can't widen the tess-3 scan (C9), analytic is a different/slower
+output (B1). All cheap in-tree leads are exhausted.*
+
+*Next agent: the only productive move is GENERATIVE — run the backlog §3 deep-research prompt (via the
+`deep-research` skill / WebSearch) to source approaches not yet tried, especially fast-SASA methods that
+produce a POINT SET (power diagrams / alpha-complex, reduced-surface/Connolly). Kill-experiment each cheaply
+BEFORE building, holding it to the two hard lessons: (1) must beat a 4-wide-SIMD sequential baseline (Phase
+1), (2) tess-3 cost is the double scan, not the build, and float can't widen it (C9/Phase 6). If nothing
+clears the bar, conclude honestly that the surface is well-optimized and stop — don't manufacture marginal
+churn. Read `scan-is-a-dead-well` memory + LOG "State of the search" rounds 1 & 2 first.*
