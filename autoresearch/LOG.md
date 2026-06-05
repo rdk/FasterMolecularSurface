@@ -98,3 +98,23 @@ No new production variant scaffolded (correctly — the kill-experiment killed i
 
 **Next: Lead #2 — float-path scaling at tess 3 / 16 threads (now the top lead). Needs an idle box for
 the timing half; the count/alloc-probe half can start anytime.**
+
+---
+
+## Phase 2 — Lead #1 float tess-3/16t scaling (IN PROGRESS — gated on idle box)
+
+Load-immune de-risk done first (box was at 1-min load ~1.5–3, just over the 1.5 gate, so the timing
+half is deferred to the next idle window).
+
+**Code read (`Float256WeightedDedupOcclusionScan`).** Its `FloatVector`s (`vx/vy/vz/vth/dot`) are created
+and discarded inside the inner per-direction loop — i.e. already method-local, the SAME shape as the
+double `Vectorized256WeightedDedupOcclusionScan` that does NOT collapse. Implication: the C9 "restructure
+so the vectors stay method-local and scalar-replace" lever (lesson 3) is likely a near no-op — they're
+already local. So IF `-prof gc` confirms a float alloc blowup at tess 3, the root cause is the JIT
+failing to scalar-replace `FloatVector.SPECIES_256` (8-lane) where it succeeds for `DoubleVector.SPECIES_256`
+(4-lane), which is NOT fixable by a trivial source restructure — would need a different formulation
+(e.g. avoid `VectorMask`/`firstTrue` boxing, or a reduce-based verdict).
+
+**Next (idle box):** `-prof gc` alloc.rate.norm for `FloatNumericalSurfaceV2` vs `V3` at tess 3,
+`-t 1/4/8/16`, `-p consume=AREA`. Confirm/refute: (a) does float wall-clock collapse begin at tess 3
+(not just tess 4)? (b) does alloc.rate.norm scale with thread count (the boxing signature)? Then verdict.
