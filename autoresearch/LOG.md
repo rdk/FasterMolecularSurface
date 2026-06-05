@@ -473,3 +473,58 @@ another in-tree kill-experiment.
 **Stopping the autoresearch loop here** (kickoff stop condition met: leads exhausted + several new ideas
 generated and tested, all documented). Re-arm `/loop execute the autoresearch kickoff` if a new direction
 or a scope change (batch mode, area-only consumer, a different operating point) opens up.
+
+---
+
+## Phase 8 — the real p2rank pattern: consume=POINTS at 16 threads (the one untested measurement-gate cell)
+
+Loop re-armed by the user after the Phase-7 conclusion → pursue the one genuinely UNMEASURED, in-scope gap
+(§2 measurement-gate item 6): all this session's benchmarks used consume=AREA, but p2rank consumes the
+POINT SET. The production table already shows POINTS ≈ AREA at tess 2 single-thread (V2: 13.05 vs 13.08 ms)
+— zero-copy materialization is free per-call. UNTESTED: POINTS at **16 threads** (the GC-pressure regime the
+flat store `DistinctFlatSurfacePointStoreV2` / `PackedSurfaceAccess` exists for) and at **tess 3**.
+
+**Hypothesis.** If the point-materialization path has headroom, it shows as POINTS ≫ AREA in wall-clock OR a
+large `gc.alloc.rate.norm` jump at 16t (GC pressure across concurrent builds). If POINTS ≈ AREA with
+controlled allocation, the flat store already handles it → no headroom (the last gap closes).
+
+**Benchmark (idle box, running): V3 AREA vs POINTS @ tess 2 & 3, -t 1/16, -prof gc.** Results pending.
+
+### Phase 8 — RESULTS (idle box, load-before 1.01/2.02): POINTS path is FREE — no headroom, last gap closed
+
+V3 AREA vs POINTS, -prof gc (raw: `autoresearch/results/phase8-points-path.txt`):
+
+| cell | AREA ms/op | POINTS ms/op | AREA alloc B/op | POINTS alloc B/op |
+|---|---|---|---|---|
+| tess2 -t1  | 12.914 | 12.756 | 10,607,665 | 10,607,706 |
+| tess3 -t1  | 21.536 | 21.581 | 13,660,961 | 13,671,408 |
+| tess2 -t16 | 16.274 | 16.171 | 10,605,905 | 10,605,802 |
+| tess3 -t16 | 26.835 | 26.904 | 13,658,114 | 13,658,111 |
+
+**Verdict: the point-materialization path has NO headroom.** POINTS ≈ AREA in BOTH wall-clock and
+allocation-per-op at every tess/thread cell — consuming the full surface point set (the real p2rank
+pattern, via the zero-copy `surfacePointsXYZ()`/`PackedSurfaceAccess` path) costs the same as computing
+just the scalar area, and allocates nothing extra. The flat-store design (V19/`DistinctFlatSurfacePointStoreV2`)
+achieves its goal: zero marginal cost for point delivery. 16t scales near-linearly (tess2 1t→16t:
+12.9→16.3 ms = 1.26× latency for 16× threads; GC is ~213 ms of the run, not a bottleneck). This closes
+the last untested measurement-gate cell (§2 item 6) and confirms the surface is at a local optimum even
+under the real consumer pattern — not just the AREA proxy used in Phases 1–7.
+
+---
+
+## SESSION CONCLUSION — round 2 (after Phase 8: the real p2rank POINTS pattern also confirms the optimum)
+
+Phase 8 (run after the user re-armed the loop) tested the one in-scope cell never measured — the actual
+p2rank `consume=POINTS` pattern at 16 threads / tess 3 — and found it free (POINTS ≈ AREA, same allocation).
+This removes the last "but we never measured the real pattern" caveat: the tess-2/3 single-protein surface
+is confirmed at a strong local optimum under the consumer's real workload, not just the AREA proxy.
+
+**There are no remaining in-scope (tess-2/3, single-protein, point-set) optimization leads.** Every
+in-tree lever (scan, build, float, store/emit, sampling) and the external literature (deep-research) have
+been exhausted and documented. Continuing to launch benchmarks would re-confirm the optimum — i.e.
+manufacture churn, which the kickoff explicitly forbids.
+
+**The genuine blocker is now a SCOPE decision (human's to make), not an experiment.** The productive
+directions all require widening the scope: whole-dataset batch/GPU throughput (C4); intra-protein
+parallelism for single-large-protein latency (C5); a native power-diagram path for an AREA-ONLY consumer;
+or a changed operating point / output contract. Surfacing that decision to the user and stopping the loop.

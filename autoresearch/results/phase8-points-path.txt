@@ -1,0 +1,156 @@
+Phase 8: V3 AREA vs POINTS @ tess 2&3, -t 1/16, -prof gc
+jar=lib/build/libs/faster-molecular-surface-1.5-jmh.jar start=2026-06-05T10:57:33+02:00
+
+===== threads=1 load-before=1.01 1.13 1.19 11/1840 937286 =====
+                 gc.alloc.rate.norm: 10607308.994 B/op
+                 gc.alloc.rate.norm: 10607309.574 B/op
+                 gc.alloc.rate.norm: 10609723.923 B/op
+                 gc.alloc.rate.norm: 10607309.161 B/op
+                 gc.alloc.rate.norm: 10607309.161 B/op
+                 gc.alloc.rate.norm: 10607309.455 B/op
+                 gc.alloc.rate.norm: 10607308.994 B/op
+                 gc.alloc.rate.norm: 10609162.942 B/op
+                 gc.alloc.rate.norm: 10607309.161 B/op
+                 gc.alloc.rate.norm: 10607309.161 B/op
+                 gc.alloc.rate.norm: 10607308.872 B/op
+                 gc.alloc.rate.norm: 10607308.872 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+                 gc.alloc.rate.norm: 13659538.468 B/op
+                 gc.alloc.rate.norm: 13659538.468 B/op
+                 gc.alloc.rate.norm: 13659539.957 B/op
+                 gc.alloc.rate.norm: 13659539.957 B/op
+                 gc.alloc.rate.norm: 13664889.191 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659539.957 B/op
+                 gc.alloc.rate.norm: 13659539.957 B/op
+                 gc.alloc.rate.norm: 13671253.591 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+                 gc.alloc.rate.norm: 10607308.994 B/op
+                 gc.alloc.rate.norm: 10609708.564 B/op
+                 gc.alloc.rate.norm: 10607308.586 B/op
+                 gc.alloc.rate.norm: 10607308.872 B/op
+                 gc.alloc.rate.norm: 10607308.586 B/op
+                 gc.alloc.rate.norm: 10607308.586 B/op
+                 gc.alloc.rate.norm: 10607308.428 B/op
+                 gc.alloc.rate.norm: 10609677.620 B/op
+                 gc.alloc.rate.norm: 10607308.304 B/op
+                 gc.alloc.rate.norm: 10607308.586 B/op
+                 gc.alloc.rate.norm: 10607308.304 B/op
+                 gc.alloc.rate.norm: 10607308.304 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659539.957 B/op
+                 gc.alloc.rate.norm: 13659539.355 B/op
+                 gc.alloc.rate.norm: 13787557.505 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13659538.468 B/op
+                 gc.alloc.rate.norm: 13659538.553 B/op
+                 gc.alloc.rate.norm: 13659539.269 B/op
+                 gc.alloc.rate.norm: 13673944.596 B/op
+                 gc.alloc.rate.norm: 13659538.468 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+Benchmark                                    (consume)  (tess)         (variantId)  Mode  Cnt         Score       Error   Units
+SurfaceBench.buildCorpus                          AREA       2  DISTINCT_PACKED_V3  avgt   12        12.914 ±     0.083   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       2  DISTINCT_PACKED_V3  avgt   12       783.332 ±     5.068  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       2  DISTINCT_PACKED_V3  avgt   12  10607664.856 ±  1075.061    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       2  DISTINCT_PACKED_V3  avgt   12        14.000              counts
+SurfaceBench.buildCorpus:gc.time                  AREA       2  DISTINCT_PACKED_V3  avgt   12        28.000                  ms
+SurfaceBench.buildCorpus                          AREA       3  DISTINCT_PACKED_V3  avgt   12        21.536 ±     0.066   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3  DISTINCT_PACKED_V3  avgt   12       604.888 ±     1.884  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3  DISTINCT_PACKED_V3  avgt   12  13660961.385 ±  4595.136    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3  DISTINCT_PACKED_V3  avgt   12        10.000              counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3  DISTINCT_PACKED_V3  avgt   12        20.000                  ms
+SurfaceBench.buildCorpus                        POINTS       2  DISTINCT_PACKED_V3  avgt   12        12.756 ±     0.101   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate          POINTS       2  DISTINCT_PACKED_V3  avgt   12       793.009 ±     6.323  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm     POINTS       2  DISTINCT_PACKED_V3  avgt   12  10607705.978 ±  1188.885    B/op
+SurfaceBench.buildCorpus:gc.count               POINTS       2  DISTINCT_PACKED_V3  avgt   12        14.000              counts
+SurfaceBench.buildCorpus:gc.time                POINTS       2  DISTINCT_PACKED_V3  avgt   12        26.000                  ms
+SurfaceBench.buildCorpus                        POINTS       3  DISTINCT_PACKED_V3  avgt   12        21.581 ±     0.159   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate          POINTS       3  DISTINCT_PACKED_V3  avgt   12       604.121 ±     4.625  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm     POINTS       3  DISTINCT_PACKED_V3  avgt   12  13671407.771 ± 47149.681    B/op
+SurfaceBench.buildCorpus:gc.count               POINTS       3  DISTINCT_PACKED_V3  avgt   12        10.000              counts
+SurfaceBench.buildCorpus:gc.time                POINTS       3  DISTINCT_PACKED_V3  avgt   12        20.000                  ms
+----- threads=1 load-after=2.02 1.51 1.33 3/1818 939528 -----
+
+===== threads=16 load-before=2.02 1.51 1.33 2/1818 939533 =====
+                 gc.alloc.rate.norm: 10605905.298 B/op
+                 gc.alloc.rate.norm: 10605905.327 B/op
+                 gc.alloc.rate.norm: 10605905.291 B/op
+                 gc.alloc.rate.norm: 10605905.395 B/op
+                 gc.alloc.rate.norm: 10605905.219 B/op
+                 gc.alloc.rate.norm: 10605905.368 B/op
+                 gc.alloc.rate.norm: 10605905.773 B/op
+                 gc.alloc.rate.norm: 10605905.195 B/op
+                 gc.alloc.rate.norm: 10605905.344 B/op
+                 gc.alloc.rate.norm: 10605905.333 B/op
+                 gc.alloc.rate.norm: 10605905.614 B/op
+                 gc.alloc.rate.norm: 10605905.747 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+                 gc.alloc.rate.norm: 13658111.050 B/op
+                 gc.alloc.rate.norm: 13658111.015 B/op
+                 gc.alloc.rate.norm: 13658111.001 B/op
+                 gc.alloc.rate.norm: 13658111.461 B/op
+                 gc.alloc.rate.norm: 13658111.123 B/op
+                 gc.alloc.rate.norm: 13658140.158 B/op
+                 gc.alloc.rate.norm: 13658111.081 B/op
+                 gc.alloc.rate.norm: 13658110.955 B/op
+                 gc.alloc.rate.norm: 13658111.500 B/op
+                 gc.alloc.rate.norm: 13658111.529 B/op
+                 gc.alloc.rate.norm: 13658111.372 B/op
+                 gc.alloc.rate.norm: 13658111.894 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+                 gc.alloc.rate.norm: 10605905.347 B/op
+                 gc.alloc.rate.norm: 10605905.192 B/op
+                 gc.alloc.rate.norm: 10605905.229 B/op
+                 gc.alloc.rate.norm: 10605905.375 B/op
+                 gc.alloc.rate.norm: 10605905.369 B/op
+                 gc.alloc.rate.norm: 10605905.289 B/op
+                 gc.alloc.rate.norm: 10605750.693 B/op
+                 gc.alloc.rate.norm: 10605689.165 B/op
+                 gc.alloc.rate.norm: 10605689.369 B/op
+                 gc.alloc.rate.norm: 10605689.289 B/op
+                 gc.alloc.rate.norm: 10605689.291 B/op
+                 gc.alloc.rate.norm: 10605689.334 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+                 gc.alloc.rate.norm: 13658111.435 B/op
+                 gc.alloc.rate.norm: 13658111.367 B/op
+                 gc.alloc.rate.norm: 13658111.581 B/op
+                 gc.alloc.rate.norm: 13658111.460 B/op
+                 gc.alloc.rate.norm: 13658111.472 B/op
+                 gc.alloc.rate.norm: 13658111.123 B/op
+                 gc.alloc.rate.norm: 13658111.151 B/op
+                 gc.alloc.rate.norm: 13658111.104 B/op
+                 gc.alloc.rate.norm: 13658111.332 B/op
+                 gc.alloc.rate.norm: 13658111.182 B/op
+                 gc.alloc.rate.norm: 13658111.462 B/op
+                 gc.alloc.rate.norm: 13658111.687 B/op
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+Benchmark                                    (consume)  (tess)         (variantId)  Mode  Cnt         Score     Error   Units
+SurfaceBench.buildCorpus                          AREA       2  DISTINCT_PACKED_V3  avgt   12        16.274 ±   0.238   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       2  DISTINCT_PACKED_V3  avgt   12      9923.540 ± 136.371  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       2  DISTINCT_PACKED_V3  avgt   12  10605905.409 ±   0.249    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       2  DISTINCT_PACKED_V3  avgt   12       180.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       2  DISTINCT_PACKED_V3  avgt   12       213.000                ms
+SurfaceBench.buildCorpus                          AREA       3  DISTINCT_PACKED_V3  avgt   12        26.835 ±   0.327   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3  DISTINCT_PACKED_V3  avgt   12      7736.759 ±  95.988  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3  DISTINCT_PACKED_V3  avgt   12  13658113.678 ±  10.687    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3  DISTINCT_PACKED_V3  avgt   12       127.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3  DISTINCT_PACKED_V3  avgt   12       175.000                ms
+SurfaceBench.buildCorpus                        POINTS       2  DISTINCT_PACKED_V3  avgt   12        16.171 ±   0.095   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate          POINTS       2  DISTINCT_PACKED_V3  avgt   12      9985.259 ±  53.334  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm     POINTS       2  DISTINCT_PACKED_V3  avgt   12  10605802.412 ± 139.336    B/op
+SurfaceBench.buildCorpus:gc.count               POINTS       2  DISTINCT_PACKED_V3  avgt   12       180.000            counts
+SurfaceBench.buildCorpus:gc.time                POINTS       2  DISTINCT_PACKED_V3  avgt   12       214.000                ms
+SurfaceBench.buildCorpus                        POINTS       3  DISTINCT_PACKED_V3  avgt   12        26.904 ±   0.326   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate          POINTS       3  DISTINCT_PACKED_V3  avgt   12      7709.798 ± 104.934  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm     POINTS       3  DISTINCT_PACKED_V3  avgt   12  13658111.363 ±   0.242    B/op
+SurfaceBench.buildCorpus:gc.count               POINTS       3  DISTINCT_PACKED_V3  avgt   12       128.000            counts
+SurfaceBench.buildCorpus:gc.time                POINTS       3  DISTINCT_PACKED_V3  avgt   12       175.000                ms
+----- threads=16 load-after=15.58 7.58 3.66 3/1828 941803 -----
+
+DONE end=2026-06-05T11:02:31+02:00
