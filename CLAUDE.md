@@ -58,7 +58,9 @@ side by side preserves the comparison; rewriting one invalidates its recorded be
   `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctPackedNumericalSurfaceV3`
   (the recommended default), `DistinctFasterNumericalSurface`, `FloatNumericalSurface`,
   `FloatNumericalSurfaceV2` (recommended approximate/float variant **at tess 2**: float build + float scan;
-  the float scan collapses ~32× at tess ≥ 4 with many threads — use double-precision V3 there).
+  the float scan collapses with many threads starting at **tess ≥ 3** (7× at 4t, 23× at 16t — Vector-API
+  float intrinsics deopt to boxing under concurrency, confirmed autoresearch Phase 2) — use
+  double-precision V3 at tess ≥ 3).
 - The concrete strategy implementations they wire together once benchmarked (see the closure rule below).
 
 **Classification rule — use this, NOT "is it in the perf doc".** A concrete class is frozen iff it is

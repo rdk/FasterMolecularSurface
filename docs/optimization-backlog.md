@@ -141,7 +141,16 @@ Deferred / deployment-shaped:
   the per-protein-per-core throughput path lesson 14 chose).
 - **C6 — Solvent-radius-sweep reuse** (subset of B2): reuse the grid + pruned pairs across a radius sweep on
   fixed coordinates. Bit-exact; gated by whether p2rank actually sweeps.
-- **C9 — Float-scan tess-4 multi-thread collapse — PARTLY DIAGNOSED.** ~32× slower at tess 4 / 16
+- **C9 — Float-scan multi-thread collapse — CONFIRMED + extends to tess 3 (autoresearch Phase 2, 2026-06-05).**
+  The boxing hypothesis is confirmed via `-prof gc` alloc.rate.norm and the collapse begins at **tess 3**,
+  not just tess 4. FLOAT_V2 vs V3 @ tess 3: 0.98× (1t) → 7.2× (4t) → 12.5× (8t) → 22.9× (16t) slower;
+  `gc.alloc.rate.norm` jumps **13.6 MB/op (1t) → 1.084 GB/op (≥2t)** while double stays flat. EA-off at
+  1t doesn't reproduce it ⇒ the single-thread vectors are register-resident via **Vector-API intrinsics**
+  (not generic EA), and the multithread collapse is those float (8-lane) intrinsics failing under
+  concurrency → boxing fallback. **No source fix** (vectors already method-local; a scalar-float scan
+  forfeits the SIMD reason). Float surfaces are tess-2-only; double V3 is the tess-3 answer. Raw:
+  `autoresearch/results/phase2-float-tess3.txt`; perf-lessons lesson 5. Original (now-superseded) note:
+- **C9 (original) — Float-scan tess-4 multi-thread collapse — PARTLY DIAGNOSED.** ~32× slower at tess 4 / 16
   threads (38→1230 ms; double scan flat); per-op time ∝ thread count. **Ruled out:** GC/heap (4g→16g
   unchanged), AVX-512 downclock (UseAVX=2 unchanged), denormals (magnitudes), shared state. **Leading
   hypothesis:** `FloatVector` not scalar-replaced → boxing (~27 GB/s alloc vs double's 8.9) saturating

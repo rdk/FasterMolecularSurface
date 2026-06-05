@@ -118,3 +118,48 @@ failing to scalar-replace `FloatVector.SPECIES_256` (8-lane) where it succeeds f
 **Next (idle box):** `-prof gc` alloc.rate.norm for `FloatNumericalSurfaceV2` vs `V3` at tess 3,
 `-t 1/4/8/16`, `-p consume=AREA`. Confirm/refute: (a) does float wall-clock collapse begin at tess 3
 (not just tess 4)? (b) does alloc.rate.norm scale with thread count (the boxing signature)? Then verdict.
+
+### Phase 2 — RESULTS (benchmark ran in the idle window, load-before 1.13–1.83; alloc numbers load-immune)
+
+`FLOAT_V2` vs `DISTINCT_PACKED_V3` @ tess 3, consume=AREA, `-prof gc` (full log:
+`autoresearch/results/phase2-float-tess3.txt`):
+
+| threads | FLOAT_V2 ms/op | V3 ms/op | float÷double | FLOAT_V2 alloc B/op | V3 alloc B/op |
+|---|---|---|---|---|---|
+| 1  | 21.12  | 21.60 | 0.98× (float faster) | 13.6 MB | 13.7 MB |
+| 4  | 163.50 | 22.85 | **7.2×**  | **1.084 GB** | 13.7 MB |
+| 8  | 302.04 | 24.26 | **12.5×** | **1.084 GB** | 13.7 MB |
+| 16 | 611.15 | 26.74 | **22.9×** | **1.084 GB** | 13.7 MB |
+
+**Verdict: the float-scan collapse begins at TESS 3 (not just tess 4), and the C9 boxing hypothesis is
+CONFIRMED.** At 1 thread the `FloatVector`s cost nothing extra (13.6 MB/op, marginally faster than
+double); at ≥2 threads per-op allocation jumps **80× to 1.084 GB/op**, alloc rate ~27 GB/s (matching
+C9's figure), and wall-clock collapses 7–23×. Double V3 is flat (21.6→26.7 ms, 1→16t — near-linear
+throughput scaling). The `alloc.rate.norm` signal is load-immune and the interleaved float/double ratio
+controls for contamination, so the result is robust.
+
+**Mechanism nailed (cheap EA probe, single thread):** `-XX:-DoEscapeAnalysis` does NOT change the float
+allocation at 1 thread (13.56 MB/op both ways). So the low single-thread allocation is NOT generic
+escape-analysis scalar-replacement — it's **Vector-API intrinsics** keeping the float vectors
+register-resident. The multithread collapse is therefore the **Vector-API float (8-lane) intrinsics
+failing to fire under concurrency**, falling back to the boxing Java implementation (~1.08 GB/op of
+`FloatVector` objects). This is NOT fixable by EA, and NOT by keeping the vectors method-local (the
+Phase-2 code read confirmed they already are — same shape as the non-collapsing 4-lane double scan).
+
+**Fixability: NONE in the Vector-API float path.** No source restructure makes the JVM re-intrinsify;
+a scalar-float scan would drop the only reason to go float (8-wide SIMD). So `FloatNumericalSurfaceV2`
+cannot become a clean tess-3 win. Lead resolved as a negative-diagnosis.
+
+**Action / takeaways:**
+- Confirms + sharpens the existing guidance: float surfaces are **tess-2-only** — tess 3 already
+  collapses, starting at just 2–4 threads. Updated CLAUDE.md ("tess ≥ 4" → "tess ≥ 3"), perf-lessons
+  lesson 5 / C9 (hypothesis → CONFIRMED, with the EA-off mechanism), backlog C9.
+- Strong positive corollary, now data-backed: **double `DistinctPackedNumericalSurfaceV3` is the correct
+  tess-3 recommendation** — it scales near-linearly to 16 threads where float is catastrophic.
+- Meta-lesson: a Vector-API speedup that holds single-threaded can *invert* under concurrency if the
+  intrinsics stop firing — always validate vectorized variants at the deployment thread count, and
+  diagnose alloc-rate (boxing) not just wall-clock. `-prof gc` alloc.rate.norm is the load-immune probe.
+
+**Next: Lead #1 is now A5 (DCLM second dot-lattice, bit-exact, tess-3 oriented) or B1 (analytic SASA,
+tolerance). Both bit-exact-scan wells look tapped; remaining upside is a different algorithm (A5) or the
+build. See KICKOFF re-rank.**

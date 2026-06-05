@@ -309,6 +309,25 @@ within this table.
    > irrelevant; it's the allocation *rate*). The double scan scalar-replaces its vectors (lesson 3), so V3
    > is flat. **Practical guidance: use the float surfaces only at tess 2; use double-precision V3 at
    > tess ≥ 4.** The original lesson holds at tess 2; it overgeneralized to tess 3–4 / many threads.
+   >
+   > **✅ CONFIRMED + extended to tess 3 (2026-06-05, autoresearch Phase 2; raw:
+   > `autoresearch/results/phase2-float-tess3.txt`).** The boxing hypothesis is now confirmed with
+   > `-prof gc` alloc.rate.norm, and the collapse already happens at **tess 3** (the claim above said
+   > tess ≥ 4). `FloatNumericalSurfaceV2` vs `DISTINCT_PACKED_V3` @ tess 3, ms/op (float÷double):
+   > 1t 21.1÷21.6 = 0.98×; **4t 163÷22.9 = 7.2×; 8t 302÷24.3 = 12.5×; 16t 611÷26.7 = 22.9×**. The
+   > smoking gun is `gc.alloc.rate.norm`: **13.6 MB/op at 1 thread → 1.084 GB/op (80×) at ≥2 threads**
+   > (double flat at 13.7 MB/op everywhere); float alloc rate ~27 GB/s, matching the prediction. So the
+   > `FloatVector`s box only under concurrency. **Mechanism nailed:** `-XX:-DoEscapeAnalysis` at 1 thread
+   > leaves float allocation unchanged (13.56 MB/op both ways) — so the low single-thread allocation is
+   > NOT generic escape-analysis scalar-replacement but **Vector-API intrinsics** keeping the vectors
+   > register-resident; the multithread collapse is the **float (8-lane) Vector-API intrinsics failing to
+   > fire under concurrency**, falling back to the boxing Java fallback. **Not fixable in source:** the
+   > vectors are already method-local (same shape as the non-collapsing 4-lane double scan), and EA is not
+   > the lever — no restructure makes the JVM re-intrinsify, and a scalar-float scan would forfeit the only
+   > reason to go float. Float surfaces are **tess-2-only, full stop**; double `DistinctPackedNumericalSurfaceV3`
+   > is the tess-3 recommendation (it scales near-linearly to 16 threads). Meta-lesson: a Vector-API win
+   > that holds single-threaded can invert under concurrency if intrinsics deopt — validate vectorized
+   > variants at the deployment thread count and watch alloc-rate, not just wall-clock.
 
 ### Algorithmic wins
 

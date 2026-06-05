@@ -1,0 +1,448 @@
+Phase 2: FLOAT_V2 vs DISTINCT_PACKED_V3 @ tess 3, -prof gc, consume=AREA
+jar=lib/build/libs/faster-molecular-surface-1.5-jmh.jar  start=2026-06-05T08:14:04+02:00
+
+===== threads=1  load-before=1.13 1.93 6.96 4/1804 828533 =====
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = FLOAT_V2)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 21.530 ms/op
+# Warmup Iteration   3: 21.164 ms/op
+Iteration   1: 21.232 ms/op
+                 gc.alloc.rate:      608.844 MB/sec
+                 gc.alloc.rate.norm: 13555929.684 B/op
+Iteration   2: 21.173 ms/op
+                 gc.alloc.rate:      610.497 MB/sec
+                 gc.alloc.rate.norm: 13555929.684 B/op
+Iteration   3: 21.114 ms/op
+                 gc.alloc.rate:      612.208 MB/sec
+                 gc.alloc.rate.norm: 13555930.358 B/op
+Iteration   4: 21.179 ms/op
+                 gc.alloc.rate:      610.354 MB/sec
+                 gc.alloc.rate.norm: 13555930.358 B/op
+Iteration   5: 21.172 ms/op
+                 gc.alloc.rate:      615.266 MB/sec
+                 gc.alloc.rate.norm: 13660001.600 B/op
+Iteration   6: 21.053 ms/op
+                 gc.alloc.rate:      613.998 MB/sec
+                 gc.alloc.rate.norm: 13555928.333 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 21.616 ms/op
+# Warmup Iteration   3: 21.114 ms/op
+Iteration   1: 21.128 ms/op
+                 gc.alloc.rate:      611.850 MB/sec
+                 gc.alloc.rate.norm: 13555929.684 B/op
+Iteration   2: 21.096 ms/op
+                 gc.alloc.rate:      612.757 MB/sec
+                 gc.alloc.rate.norm: 13555929.095 B/op
+Iteration   3: 21.107 ms/op
+                 gc.alloc.rate:      612.435 MB/sec
+                 gc.alloc.rate.norm: 13555930.358 B/op
+Iteration   4: 21.169 ms/op
+                 gc.alloc.rate:      610.648 MB/sec
+                 gc.alloc.rate.norm: 13555930.358 B/op
+Iteration   5: 21.049 ms/op
+                 gc.alloc.rate:      614.351 MB/sec
+                 gc.alloc.rate.norm: 13560539.500 B/op
+Iteration   6: 21.010 ms/op
+                 gc.alloc.rate:      615.259 MB/sec
+                 gc.alloc.rate.norm: 13555928.917 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = DISTINCT_PACKED_V3)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 21.920 ms/op
+# Warmup Iteration   3: 21.524 ms/op
+Iteration   1: 21.471 ms/op
+                 gc.alloc.rate:      606.686 MB/sec
+                 gc.alloc.rate.norm: 13659537.872 B/op
+Iteration   2: 21.440 ms/op
+                 gc.alloc.rate:      607.549 MB/sec
+                 gc.alloc.rate.norm: 13659538.468 B/op
+Iteration   3: 21.472 ms/op
+                 gc.alloc.rate:      606.635 MB/sec
+                 gc.alloc.rate.norm: 13659539.149 B/op
+Iteration   4: 21.529 ms/op
+                 gc.alloc.rate:      605.031 MB/sec
+                 gc.alloc.rate.norm: 13659539.269 B/op
+Iteration   5: 21.644 ms/op
+                 gc.alloc.rate:      601.947 MB/sec
+                 gc.alloc.rate.norm: 13662628.903 B/op
+Iteration   6: 21.604 ms/op
+                 gc.alloc.rate:      602.927 MB/sec
+                 gc.alloc.rate.norm: 13659538.667 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 21.943 ms/op
+# Warmup Iteration   3: 21.512 ms/op
+Iteration   1: 21.649 ms/op
+                 gc.alloc.rate:      601.679 MB/sec
+                 gc.alloc.rate.norm: 13659539.269 B/op
+Iteration   2: 21.660 ms/op
+                 gc.alloc.rate:      601.363 MB/sec
+                 gc.alloc.rate.norm: 13659539.269 B/op
+Iteration   3: 21.662 ms/op
+                 gc.alloc.rate:      601.307 MB/sec
+                 gc.alloc.rate.norm: 13659539.269 B/op
+Iteration   4: 21.727 ms/op
+                 gc.alloc.rate:      599.512 MB/sec
+                 gc.alloc.rate.norm: 13659540.645 B/op
+Iteration   5: 21.668 ms/op
+                 gc.alloc.rate:      602.517 MB/sec
+                 gc.alloc.rate.norm: 13690492.215 B/op
+Iteration   6: 21.654 ms/op
+                 gc.alloc.rate:      601.513 MB/sec
+                 gc.alloc.rate.norm: 13659539.269 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Run complete. Total time: 00:01:13
+Benchmark                                    (consume)  (tess)         (variantId)  Mode  Cnt         Score       Error   Units
+SurfaceBench.buildCorpus                          AREA       3            FLOAT_V2  avgt   12        21.124 ±     0.083   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3            FLOAT_V2  avgt   12       612.372 ±     2.640  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3            FLOAT_V2  avgt   12  13564986.494 ± 38363.031    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3            FLOAT_V2  avgt   12        10.000              counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3            FLOAT_V2  avgt   12        19.000                  ms
+SurfaceBench.buildCorpus                          AREA       3  DISTINCT_PACKED_V3  avgt   12        21.598 ±     0.122   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3  DISTINCT_PACKED_V3  avgt   12       603.222 ±     3.323  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3  DISTINCT_PACKED_V3  avgt   12  13662376.022 ± 11397.921    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3  DISTINCT_PACKED_V3  avgt   12         9.000              counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3  DISTINCT_PACKED_V3  avgt   12        19.000                  ms
+----- threads=1  load-after=1.83 1.96 6.58 3/1796 829470 -----
+
+===== threads=4  load-before=1.83 1.96 6.58 2/1796 829475 =====
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = FLOAT_V2)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 161.617 ±(99.9%) 5.207 ms/op
+# Warmup Iteration   3: 162.475 ±(99.9%) 2.062 ms/op
+Iteration   1: 163.620 ±(99.9%) 0.820 ms/op
+                 gc.alloc.rate:      25126.997 MB/sec
+                 gc.alloc.rate.norm: 1083938781.091 B/op
+Iteration   2: 163.373 ±(99.9%) 4.455 ms/op
+                 gc.alloc.rate:      25120.146 MB/sec
+                 gc.alloc.rate.norm: 1083938778.764 B/op
+Iteration   3: 163.739 ±(99.9%) 0.462 ms/op
+                 gc.alloc.rate:      25079.480 MB/sec
+                 gc.alloc.rate.norm: 1083938779.345 B/op
+Iteration   4: 163.309 ±(99.9%) 1.450 ms/op
+                 gc.alloc.rate:      25128.800 MB/sec
+                 gc.alloc.rate.norm: 1083938778.182 B/op
+Iteration   5: 163.322 ±(99.9%) 4.640 ms/op
+                 gc.alloc.rate:      25114.085 MB/sec
+                 gc.alloc.rate.norm: 1083938779.927 B/op
+Iteration   6: 163.373 ±(99.9%) 1.867 ms/op
+                 gc.alloc.rate:      25154.431 MB/sec
+                 gc.alloc.rate.norm: 1083938786.618 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 163.957 ±(99.9%) 6.092 ms/op
+# Warmup Iteration   3: 163.855 ±(99.9%) 6.257 ms/op
+Iteration   1: 163.962 ±(99.9%) 13.993 ms/op
+                 gc.alloc.rate:      24830.755 MB/sec
+                 gc.alloc.rate.norm: 1083938779.927 B/op
+Iteration   2: 163.751 ±(99.9%) 2.205 ms/op
+                 gc.alloc.rate:      25063.374 MB/sec
+                 gc.alloc.rate.norm: 1083938778.764 B/op
+Iteration   3: 163.098 ±(99.9%) 2.358 ms/op
+                 gc.alloc.rate:      25140.297 MB/sec
+                 gc.alloc.rate.norm: 1083938777.600 B/op
+Iteration   4: 163.616 ±(99.9%) 3.020 ms/op
+                 gc.alloc.rate:      25060.141 MB/sec
+                 gc.alloc.rate.norm: 1083938781.091 B/op
+Iteration   5: 163.469 ±(99.9%) 10.528 ms/op
+                 gc.alloc.rate:      24988.010 MB/sec
+                 gc.alloc.rate.norm: 1083938778.764 B/op
+Iteration   6: 163.326 ±(99.9%) 1.827 ms/op
+                 gc.alloc.rate:      25107.468 MB/sec
+                 gc.alloc.rate.norm: 1083938786.036 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = DISTINCT_PACKED_V3)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 23.525 ±(99.9%) 0.034 ms/op
+# Warmup Iteration   3: 23.052 ±(99.9%) 0.008 ms/op
+Iteration   1: 22.828 ±(99.9%) 0.014 ms/op
+                 gc.alloc.rate:      2276.894 MB/sec
+                 gc.alloc.rate.norm: 13659490.817 B/op
+Iteration   2: 22.741 ±(99.9%) 0.022 ms/op
+                 gc.alloc.rate:      2285.276 MB/sec
+                 gc.alloc.rate.norm: 13659490.546 B/op
+Iteration   3: 22.533 ±(99.9%) 0.037 ms/op
+                 gc.alloc.rate:      2305.569 MB/sec
+                 gc.alloc.rate.norm: 13659489.983 B/op
+Iteration   4: 22.535 ±(99.9%) 0.016 ms/op
+                 gc.alloc.rate:      2305.665 MB/sec
+                 gc.alloc.rate.norm: 13658473.760 B/op
+Iteration   5: 22.569 ±(99.9%) 0.034 ms/op
+                 gc.alloc.rate:      2301.736 MB/sec
+                 gc.alloc.rate.norm: 13658122.429 B/op
+Iteration   6: 22.712 ±(99.9%) 0.031 ms/op
+                 gc.alloc.rate:      2286.489 MB/sec
+                 gc.alloc.rate.norm: 13658123.320 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 23.667 ±(99.9%) 0.019 ms/op
+# Warmup Iteration   3: 23.294 ±(99.9%) 0.093 ms/op
+Iteration   1: 23.241 ±(99.9%) 0.023 ms/op
+                 gc.alloc.rate:      2236.222 MB/sec
+                 gc.alloc.rate.norm: 13659490.940 B/op
+Iteration   2: 23.136 ±(99.9%) 0.101 ms/op
+                 gc.alloc.rate:      2244.630 MB/sec
+                 gc.alloc.rate.norm: 13659490.940 B/op
+Iteration   3: 22.996 ±(99.9%) 0.014 ms/op
+                 gc.alloc.rate:      2260.042 MB/sec
+                 gc.alloc.rate.norm: 13659491.031 B/op
+Iteration   4: 23.024 ±(99.9%) 0.019 ms/op
+                 gc.alloc.rate:      2256.942 MB/sec
+                 gc.alloc.rate.norm: 13658684.855 B/op
+Iteration   5: 22.996 ±(99.9%) 0.015 ms/op
+                 gc.alloc.rate:      2259.837 MB/sec
+                 gc.alloc.rate.norm: 13658123.031 B/op
+Iteration   6: 22.907 ±(99.9%) 0.014 ms/op
+                 gc.alloc.rate:      2266.759 MB/sec
+                 gc.alloc.rate.norm: 13658123.561 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Run complete. Total time: 00:01:18
+Benchmark                                    (consume)  (tess)         (variantId)  Mode  Cnt           Score     Error   Units
+SurfaceBench.buildCorpus                          AREA       3            FLOAT_V2  avgt   12         163.497 ±   0.312   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3            FLOAT_V2  avgt   12       25076.165 ± 114.805  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3            FLOAT_V2  avgt   12  1083938780.509 ±   3.736    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3            FLOAT_V2  avgt   12         556.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3            FLOAT_V2  avgt   12         343.000                ms
+SurfaceBench.buildCorpus                          AREA       3  DISTINCT_PACKED_V3  avgt   12          22.851 ±   0.304   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3  DISTINCT_PACKED_V3  avgt   12        2273.838 ±  30.134  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3  DISTINCT_PACKED_V3  avgt   12    13658882.935 ± 840.128    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3  DISTINCT_PACKED_V3  avgt   12          37.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3  DISTINCT_PACKED_V3  avgt   12          45.000                ms
+----- threads=4  load-after=4.24 2.71 6.45 3/1779 830187 -----
+
+===== threads=8  load-before=4.24 2.71 6.45 2/1779 830192 =====
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = FLOAT_V2)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 303.361 ±(99.9%) 101.361 ms/op
+# Warmup Iteration   3: 303.504 ±(99.9%) 78.225 ms/op
+Iteration   1: 302.955 ±(99.9%) 53.064 ms/op
+                 gc.alloc.rate:      27362.705 MB/sec
+                 gc.alloc.rate.norm: 1083938798.277 B/op
+Iteration   2: 297.853 ±(99.9%) 45.886 ms/op
+                 gc.alloc.rate:      27603.413 MB/sec
+                 gc.alloc.rate.norm: 1083938795.323 B/op
+Iteration   3: 301.365 ±(99.9%) 83.725 ms/op
+                 gc.alloc.rate:      27465.527 MB/sec
+                 gc.alloc.rate.norm: 1083938796.800 B/op
+Iteration   4: 300.332 ±(99.9%) 45.380 ms/op
+                 gc.alloc.rate:      27575.001 MB/sec
+                 gc.alloc.rate.norm: 1083938790.687 B/op
+Iteration   5: 300.465 ±(99.9%) 78.699 ms/op
+                 gc.alloc.rate:      27327.430 MB/sec
+                 gc.alloc.rate.norm: 1083938799.250 B/op
+Iteration   6: 302.078 ±(99.9%) 44.798 ms/op
+                 gc.alloc.rate:      27248.690 MB/sec
+                 gc.alloc.rate.norm: 1083938801.231 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 304.694 ±(99.9%) 66.808 ms/op
+# Warmup Iteration   3: 310.402 ±(99.9%) 106.331 ms/op
+Iteration   1: 298.790 ±(99.9%) 27.539 ms/op
+                 gc.alloc.rate:      26858.740 MB/sec
+                 gc.alloc.rate.norm: 1083938796.308 B/op
+Iteration   2: 301.246 ±(99.9%) 64.667 ms/op
+                 gc.alloc.rate:      27168.322 MB/sec
+                 gc.alloc.rate.norm: 1083938798.277 B/op
+Iteration   3: 298.555 ±(99.9%) 57.742 ms/op
+                 gc.alloc.rate:      27568.620 MB/sec
+                 gc.alloc.rate.norm: 1083938798.277 B/op
+Iteration   4: 306.539 ±(99.9%) 56.129 ms/op
+                 gc.alloc.rate:      27138.768 MB/sec
+                 gc.alloc.rate.norm: 1083938793.455 B/op
+Iteration   5: 307.606 ±(99.9%) 89.250 ms/op
+                 gc.alloc.rate:      27359.373 MB/sec
+                 gc.alloc.rate.norm: 1083938796.800 B/op
+Iteration   6: 306.731 ±(99.9%) 88.778 ms/op
+                 gc.alloc.rate:      27262.357 MB/sec
+                 gc.alloc.rate.norm: 1083938808.381 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = DISTINCT_PACKED_V3)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 24.575 ±(99.9%) 0.032 ms/op
+# Warmup Iteration   3: 24.307 ±(99.9%) 0.144 ms/op
+Iteration   1: 24.063 ±(99.9%) 0.019 ms/op
+                 gc.alloc.rate:      4324.075 MB/sec
+                 gc.alloc.rate.norm: 13659145.968 B/op
+Iteration   2: 24.251 ±(99.9%) 0.059 ms/op
+                 gc.alloc.rate:      4285.994 MB/sec
+                 gc.alloc.rate.norm: 13658114.432 B/op
+Iteration   3: 24.210 ±(99.9%) 0.042 ms/op
+                 gc.alloc.rate:      4294.575 MB/sec
+                 gc.alloc.rate.norm: 13658114.623 B/op
+Iteration   4: 24.242 ±(99.9%) 0.012 ms/op
+                 gc.alloc.rate:      4291.521 MB/sec
+                 gc.alloc.rate.norm: 13658114.241 B/op
+Iteration   5: 24.317 ±(99.9%) 0.036 ms/op
+                 gc.alloc.rate:      4276.295 MB/sec
+                 gc.alloc.rate.norm: 13658114.385 B/op
+Iteration   6: 24.253 ±(99.9%) 0.011 ms/op
+                 gc.alloc.rate:      4286.400 MB/sec
+                 gc.alloc.rate.norm: 13658116.268 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 24.418 ±(99.9%) 0.050 ms/op
+# Warmup Iteration   3: 24.502 ±(99.9%) 0.206 ms/op
+Iteration   1: 24.318 ±(99.9%) 0.034 ms/op
+                 gc.alloc.rate:      4278.158 MB/sec
+                 gc.alloc.rate.norm: 13659109.866 B/op
+Iteration   2: 24.356 ±(99.9%) 0.022 ms/op
+                 gc.alloc.rate:      4272.687 MB/sec
+                 gc.alloc.rate.norm: 13658114.146 B/op
+Iteration   3: 24.267 ±(99.9%) 0.080 ms/op
+                 gc.alloc.rate:      4288.974 MB/sec
+                 gc.alloc.rate.norm: 13658114.480 B/op
+Iteration   4: 24.286 ±(99.9%) 0.022 ms/op
+                 gc.alloc.rate:      4278.766 MB/sec
+                 gc.alloc.rate.norm: 13658114.575 B/op
+Iteration   5: 24.164 ±(99.9%) 0.032 ms/op
+                 gc.alloc.rate:      4303.225 MB/sec
+                 gc.alloc.rate.norm: 13658114.241 B/op
+Iteration   6: 24.344 ±(99.9%) 0.039 ms/op
+                 gc.alloc.rate:      4272.936 MB/sec
+                 gc.alloc.rate.norm: 13658114.861 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Run complete. Total time: 00:01:22
+Benchmark                                    (consume)  (tess)         (variantId)  Mode  Cnt           Score     Error   Units
+SurfaceBench.buildCorpus                          AREA       3            FLOAT_V2  avgt   12         302.043 ±   4.244   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3            FLOAT_V2  avgt   12       27328.246 ± 275.245  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3            FLOAT_V2  avgt   12  1083938797.755 ±   5.547    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3            FLOAT_V2  avgt   12         661.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3            FLOAT_V2  avgt   12         524.000                ms
+SurfaceBench.buildCorpus                          AREA       3  DISTINCT_PACKED_V3  avgt   12          24.256 ±   0.105   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3  DISTINCT_PACKED_V3  avgt   12        4287.800 ±  18.826  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3  DISTINCT_PACKED_V3  avgt   12    13658283.507 ± 505.292    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3  DISTINCT_PACKED_V3  avgt   12          71.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3  DISTINCT_PACKED_V3  avgt   12          70.000                ms
+----- threads=8  load-after=7.81 4.20 6.67 4/1815 830976 -----
+
+===== threads=16  load-before=7.81 4.20 6.67 2/1815 830981 =====
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = FLOAT_V2)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 608.246 ±(99.9%) 12.881 ms/op
+# Warmup Iteration   3: 608.106 ±(99.9%) 9.872 ms/op
+Iteration   1: 608.362 ±(99.9%) 15.689 ms/op
+                 gc.alloc.rate:      27148.744 MB/sec
+                 gc.alloc.rate.norm: 1083938840.608 B/op
+Iteration   2: 624.236 ±(99.9%) 17.777 ms/op
+                 gc.alloc.rate:      26547.007 MB/sec
+                 gc.alloc.rate.norm: 1083938845.641 B/op
+Iteration   3: 617.667 ±(99.9%) 17.529 ms/op
+                 gc.alloc.rate:      26770.108 MB/sec
+                 gc.alloc.rate.norm: 1083938843.848 B/op
+Iteration   4: 606.737 ±(99.9%) 10.699 ms/op
+                 gc.alloc.rate:      27212.750 MB/sec
+                 gc.alloc.rate.norm: 1083938842.633 B/op
+Iteration   5: 606.431 ±(99.9%) 14.857 ms/op
+                 gc.alloc.rate:      27124.689 MB/sec
+                 gc.alloc.rate.norm: 1083938843.848 B/op
+Iteration   6: 607.712 ±(99.9%) 13.366 ms/op
+                 gc.alloc.rate:      27194.649 MB/sec
+                 gc.alloc.rate.norm: 1083939663.190 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 605.605 ±(99.9%) 7.169 ms/op
+# Warmup Iteration   3: 607.409 ±(99.9%) 7.278 ms/op
+Iteration   1: 609.057 ±(99.9%) 12.646 ms/op
+                 gc.alloc.rate:      27169.724 MB/sec
+                 gc.alloc.rate.norm: 1083938840.608 B/op
+Iteration   2: 606.609 ±(99.9%) 20.529 ms/op
+                 gc.alloc.rate:      27211.285 MB/sec
+                 gc.alloc.rate.norm: 1083938843.038 B/op
+Iteration   3: 608.186 ±(99.9%) 6.302 ms/op
+                 gc.alloc.rate:      27140.802 MB/sec
+                 gc.alloc.rate.norm: 1083938845.468 B/op
+Iteration   4: 614.659 ±(99.9%) 10.371 ms/op
+                 gc.alloc.rate:      26875.608 MB/sec
+                 gc.alloc.rate.norm: 1083938845.468 B/op
+Iteration   5: 612.649 ±(99.9%) 10.413 ms/op
+                 gc.alloc.rate:      26955.856 MB/sec
+                 gc.alloc.rate.norm: 1083938842.228 B/op
+Iteration   6: 611.461 ±(99.9%) 15.033 ms/op
+                 gc.alloc.rate:      27027.114 MB/sec
+                 gc.alloc.rate.norm: 1083939295.899 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Benchmark mode: Average time, time/op
+# Benchmark: cz.cuni.cusbg.surface.SurfaceBench.buildCorpus
+# Parameters: (consume = AREA, tess = 3, variantId = DISTINCT_PACKED_V3)
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 26.915 ±(99.9%) 0.554 ms/op
+# Warmup Iteration   3: 27.030 ±(99.9%) 0.764 ms/op
+Iteration   1: 27.441 ±(99.9%) 1.466 ms/op
+                 gc.alloc.rate:      7576.174 MB/sec
+                 gc.alloc.rate.norm: 13658111.350 B/op
+Iteration   2: 27.251 ±(99.9%) 0.926 ms/op
+                 gc.alloc.rate:      7638.172 MB/sec
+                 gc.alloc.rate.norm: 13658111.341 B/op
+Iteration   3: 26.851 ±(99.9%) 0.411 ms/op
+                 gc.alloc.rate:      7747.609 MB/sec
+                 gc.alloc.rate.norm: 13658111.334 B/op
+Iteration   4: 26.896 ±(99.9%) 0.395 ms/op
+                 gc.alloc.rate:      7686.469 MB/sec
+                 gc.alloc.rate.norm: 13658111.425 B/op
+Iteration   5: 27.149 ±(99.9%) 0.617 ms/op
+                 gc.alloc.rate:      7625.291 MB/sec
+                 gc.alloc.rate.norm: 13658111.408 B/op
+Iteration   6: 26.770 ±(99.9%) 0.541 ms/op
+                 gc.alloc.rate:      7759.189 MB/sec
+                 gc.alloc.rate.norm: 13658111.113 B/op
+# Warmup Iteration   1: SLF4J(W): No SLF4J providers were found.
+# Warmup Iteration   2: 26.556 ±(99.9%) 0.301 ms/op
+# Warmup Iteration   3: 26.251 ±(99.9%) 0.387 ms/op
+Iteration   1: 26.333 ±(99.9%) 0.512 ms/op
+                 gc.alloc.rate:      7877.682 MB/sec
+                 gc.alloc.rate.norm: 13658110.869 B/op
+Iteration   2: 26.350 ±(99.9%) 0.388 ms/op
+                 gc.alloc.rate:      7866.824 MB/sec
+                 gc.alloc.rate.norm: 13658111.115 B/op
+Iteration   3: 26.331 ±(99.9%) 0.675 ms/op
+                 gc.alloc.rate:      7886.068 MB/sec
+                 gc.alloc.rate.norm: 13658110.924 B/op
+Iteration   4: 26.547 ±(99.9%) 0.439 ms/op
+                 gc.alloc.rate:      7823.518 MB/sec
+                 gc.alloc.rate.norm: 13658110.995 B/op
+Iteration   5: 26.288 ±(99.9%) 0.405 ms/op
+                 gc.alloc.rate:      7899.462 MB/sec
+                 gc.alloc.rate.norm: 13658110.873 B/op
+Iteration   6: 26.610 ±(99.9%) 0.647 ms/op
+                 gc.alloc.rate:      7806.091 MB/sec
+                 gc.alloc.rate.norm: 13658111.583 B/op
+Result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate":
+Secondary result "cz.cuni.cusbg.surface.SurfaceBench.buildCorpus:gc.alloc.rate.norm":
+# Run complete. Total time: 00:01:32
+Benchmark                                    (consume)  (tess)         (variantId)  Mode  Cnt           Score     Error   Units
+SurfaceBench.buildCorpus                          AREA       3            FLOAT_V2  avgt   12         611.147 ±   6.946   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3            FLOAT_V2  avgt   12       27031.528 ± 267.107  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3            FLOAT_V2  avgt   12  1083938949.373 ± 332.679    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3            FLOAT_V2  avgt   12         809.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3            FLOAT_V2  avgt   12        1055.000                ms
+SurfaceBench.buildCorpus                          AREA       3  DISTINCT_PACKED_V3  avgt   12          26.735 ±   0.504   ms/op
+SurfaceBench.buildCorpus:gc.alloc.rate            AREA       3  DISTINCT_PACKED_V3  avgt   12        7766.046 ± 143.809  MB/sec
+SurfaceBench.buildCorpus:gc.alloc.rate.norm       AREA       3  DISTINCT_PACKED_V3  avgt   12    13658111.194 ±   0.311    B/op
+SurfaceBench.buildCorpus:gc.count                 AREA       3  DISTINCT_PACKED_V3  avgt   12         128.000            counts
+SurfaceBench.buildCorpus:gc.time                  AREA       3  DISTINCT_PACKED_V3  avgt   12         171.000                ms
+----- threads=16  load-after=15.80 7.90 7.75 3/1796 831970 -----
+
+DONE end=2026-06-05T08:19:31+02:00

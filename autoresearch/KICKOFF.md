@@ -72,8 +72,11 @@ Two output contracts (both legitimate; pursue both):
 ## Current state (update this section each phase)
 
 - **Bit-exact default:** `DistinctPackedNumericalSurfaceV3` (= V2 + SIMD neighbour build, A6/V21).
-- **Float (tess 2):** `FloatNumericalSurfaceV2` (float build + float scan). Wins at tess 2; do not use at
-  tess ≥ 4 / many threads (float scan collapse — boxing/bandwidth hypothesis, C9).
+- **Float (tess 2 ONLY):** `FloatNumericalSurfaceV2` (float build + float scan). Wins at tess 2; do NOT use
+  at tess ≥ 3 with >1 thread — float scan collapses 7× (4t) / 23× (16t). **C9 CONFIRMED (Phase 2):** the
+  Vector-API float (8-lane) intrinsics deopt to boxing under concurrency (alloc 13.6 MB/op → 1.084 GB/op
+  at ≥2 threads); NOT fixable in source (vectors already method-local; EA isn't the lever). Double V3 is
+  the tess-3 answer (it scales near-linearly).
 - **Confirmed this far:** wins = A6 (SIMD build, +4–5% tess2), C1 (float build, +1.6–2.8% tess2).
   Negatives = A2 (tighter grid), A7 double (V22) & float (V25/C2), C3 region hint (V23), naive A1, A4,
   **and now the LUT-bitmask / fully-buried-atom prize (Phase 1, closed — see below).**
@@ -82,24 +85,25 @@ Two output contracts (both legitimate; pursue both):
   SIMD (~25% wall-clock), so the ceiling is ~2× on a ~34%-CPU op AND a cheap sound LUT is 85–92% false
   positives. **Meta-lesson: counting headroom ≠ wall-clock headroom when the baseline is vectorized.**
   Don't re-try any neighbor-major / bitmask form. (LOG Phase 1; perf-lessons "not worth doing".)
-- **Open headroom now:** float-path tess-3/16t scaling (Lead #1 below), A5 DCLM dot-lattice (tess 3),
-  B1 analytic SASA (tolerance). The bit-exact incremental scan well looks tapped — remaining bit-exact
-  upside is most likely in the *build* or in a genuinely different algorithm (A5), not the scan.
+- **Open headroom now:** A5 DCLM dot-lattice (tess 3, bit-exact, a genuinely different scan algorithm),
+  B1 analytic SASA (tolerance). Two leads are now closed (§1b bitmask; float tess-3 = C9 confirmed). The
+  bit-exact *incremental* scan well looks tapped — remaining bit-exact upside is most likely in the
+  *build* or in a genuinely different algorithm (A5), not in refining the current scan.
 
 ## Prioritized leads (tess 2 & 3 only) — re-rank each phase
 
-0. ~~**LUT-bitmask / fully-buried-atom prize.**~~ **CLOSED-NEGATIVE (Phase 1).** Infeasible; do not
-   re-try. See Current state above and LOG Phase 1.
-1. **Float-path scaling at tess 3 / 16 threads.** Does the FloatVector boxing/bandwidth collapse (C9) begin
-   at tess 3? Measure FloatNumericalSurfaceV2 vs V3 at tess 3, -t 1/4/8/16 (idle). If tess-3 float also
-   collapses at 16t, that's in scope: confirm the boxing hypothesis (`-prof gc` alloc.rate.norm) and try
-   restructuring the float scan so its `FloatVector`s stay method-local and scalar-replace (lesson 3). A
-   fix would make FloatNumericalSurfaceV2 a clean tess-3 win too.
-3. **A5 — DCLM second dot-lattice (backlog A5).** Bin an atom's tessellation dots so each neighbor tests
+- ~~**LUT-bitmask / fully-buried-atom prize.**~~ **CLOSED-NEGATIVE (Phase 1).** Infeasible; do not re-try.
+- ~~**Float-path scaling at tess 3 / 16 threads.**~~ **RESOLVED (Phase 2): C9 confirmed, no source fix.**
+  Float collapses at tess 3 (7×/12.5×/23× at 4/8/16t); Vector-API float intrinsics deopt to boxing under
+  concurrency (1.084 GB/op). Float is tess-2-only; double V3 is the tess-3 answer. Do not re-try.
+1. **A5 — DCLM second dot-lattice (backlog A5).** Bin an atom's tessellation dots so each neighbor tests
    only the dots in its cap. Pays most at tess 3 (162 directions). Bit-exact. Study GROMACS `sasa.cpp`.
-4. **B1 — analytic per-atom SASA (backlog B1).** Opt-in; could win at tess 3. Cheap gate first: compute
+   **Cheap kill-experiment first:** instrument (load-immune) the avg #dots per neighbor's cap vs the 162
+   directions — if a neighbor's cap already covers most directions, binning saves little. Mind the Phase-1
+   meta-lesson: a count win must survive the vectorized baseline (don't trade SIMD+sequential for gather).
+2. **B1 — analytic per-atom SASA (backlog B1).** Opt-in; could win at tess 3. Cheap gate first: compute
    analytic area, compare to sampled tess-2/3 on the corpus (is the gap within p2rank's tolerance?).
-5. **Generate your own.** You are encouraged to invent and test new ideas; record each in the LOG with a
+3. **Generate your own.** You are encouraged to invent and test new ideas; record each in the LOG with a
    hypothesis and a cheap kill-experiment before investing.
 
 ## Per-phase workflow
@@ -127,12 +131,17 @@ Two output contracts (both legitimate; pursue both):
 
 ---
 
-*Phase 1 done: the LUT-bitmask / fully-buried-atom prize (old Lead #1) is CLOSED-NEGATIVE — a cheap
-count-based kill-experiment (`BitmaskFeasibilityTest`) showed the floor is unreachable and a sound cheap
-LUT is 85–92% false positives, slower than the SIMD baseline. No variant scaffolded (the cheap probe
-saved that cost). Meta-lesson recorded: counting headroom ≠ wall-clock headroom vs a vectorized baseline.*
+*Phase 1 (LUT-bitmask prize): CLOSED-NEGATIVE — cheap count kill-experiment killed it (floor unreachable,
+sound LUT 85–92% false positives). Meta-lesson: counting headroom ≠ wall-clock headroom vs a vectorized
+baseline.*
 
-*Next agent: start at Lead #1 (float-path tess-3/16t scaling). The count/alloc-probe half (`-prof gc`
-alloc.rate.norm of FloatNumericalSurfaceV2 vs V3 at tess 3, and ScanInstrumentation-style counts) is
-load-immune and can start now; the timing half needs an idle box (load < 1.5 — it was ~25 during
-Phase 1, so the bench is still pending). De-risk cheaply first (the A2/A7/C2/§1b pattern).*
+*Phase 2 (float tess-3 scaling): RESOLVED — C9 confirmed and extended to tess 3. Benchmark in the idle
+window showed float collapses 7×/12.5×/23× at 4/8/16t with alloc jumping 13.6 MB/op → 1.084 GB/op; an
+EA-off probe proved it's Vector-API intrinsic deopt (not generic EA), so there is NO source fix. Float =
+tess-2-only; double V3 owns tess 3. Updated lesson 5, backlog C9, CLAUDE.md.*
+
+*Next agent: start at Lead #1 = A5 (DCLM second dot-lattice, bit-exact, tess-3). De-risk cheaply FIRST
+(load-immune instrumentation: avg dots-per-neighbor-cap vs 162 directions) — and hold it to the Phase-1
+meta-lesson: any count win must survive the 4-wide-SIMD + sequential-access baseline, so beware turning a
+sequential SIMD scan into a gather. Timing runs need load < 1.5 (it spiked back to ~5 right after the
+Phase-2 bench — poll before benchmarking).*
