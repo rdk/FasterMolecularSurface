@@ -66,9 +66,22 @@ Effort/confidence are the reviewers' estimates; treat as hypotheses to measure, 
 
 ---
 
-## 1b. UNFINISHED TRACK — the fully-buried-atom prize (LUT-bitmask scan)
+## 1b. CLOSED (NEGATIVE) — the fully-buried-atom prize (LUT-bitmask scan)
 
-**Status: open, scoped, the single biggest remaining bit-exact opportunity. Resume here.**
+**Status: CLOSED as infeasible (autoresearch Phase 1, 2026-06-05). Do not re-try in this form.**
+End-to-end count-based feasibility study (`BitmaskFeasibilityTest` / `BitmaskFeasibilityScan` /
+`CapDirectionLut`, tess 2 & 3, full corpus, soundness-verified): the *perfect-mask* floor is only
+11.9% (tess 2) / 18% (tess 3) of current scalar dot-tests, but the current scan is already 4-wide SIMD
+(~25% wall-clock of its scalar count), so even a free perfect mask caps at ~2× on a ~34%-of-CPU op
+(≤~17% total). A *sound* cheap LUT runs 85–92% false positives even at a 0.4–1.2 MB table → the
+realistic candidate scan is 18.6%/28% of current scalar tests, done with scattered gathers + a
+per-neighbor sqrt+3-divides mask-build + a large LUT thrashing shared L3 at 16–32 threads — slower than
+the SIMD baseline. Pure-OR (approximate) form also dead (drastic area under-count). Meta-lesson:
+counting headroom ≠ wall-clock headroom when the baseline is vectorized. Full numbers + reasoning in
+`autoresearch/LOG.md` Phase 1 and the "Explicitly not worth doing" section of `performance-lessons.md`.
+The original (now-refuted) write-up follows for the record.
+
+**Original status (refuted): open, scoped, the single biggest remaining bit-exact opportunity.**
 
 The feasibility instrumentation (`ScanInstrumentationTest`, tess 2) established:
 - **61% of atoms are fully buried** (emit zero surface points) yet consume **57% of the scan's

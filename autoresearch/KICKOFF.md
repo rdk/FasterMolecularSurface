@@ -75,17 +75,22 @@ Two output contracts (both legitimate; pursue both):
 - **Float (tess 2):** `FloatNumericalSurfaceV2` (float build + float scan). Wins at tess 2; do not use at
   tess ≥ 4 / many threads (float scan collapse — boxing/bandwidth hypothesis, C9).
 - **Confirmed this far:** wins = A6 (SIMD build, +4–5% tess2), C1 (float build, +1.6–2.8% tess2).
-  Negatives = A2 (tighter grid), A7 double (V22) & float (V25/C2), C3 region hint (V23), naive A1, A4.
-- **Open headroom:** §1b fully-buried-atom prize (61% of atoms / 57% of scan time at tess 2 — needs a
-  cheap cap→direction-mask LUT + mask-full early-exit). This is the biggest bit-exact prize at tess 2.
+  Negatives = A2 (tighter grid), A7 double (V22) & float (V25/C2), C3 region hint (V23), naive A1, A4,
+  **and now the LUT-bitmask / fully-buried-atom prize (Phase 1, closed — see below).**
+- **§1b LUT-bitmask prize: CLOSED-NEGATIVE (Phase 1).** The "biggest open bit-exact prize" is infeasible.
+  Perfect-mask floor is only 11.9%/18% of current *scalar* tests, but the baseline is already 4-wide
+  SIMD (~25% wall-clock), so the ceiling is ~2× on a ~34%-CPU op AND a cheap sound LUT is 85–92% false
+  positives. **Meta-lesson: counting headroom ≠ wall-clock headroom when the baseline is vectorized.**
+  Don't re-try any neighbor-major / bitmask form. (LOG Phase 1; perf-lessons "not worth doing".)
+- **Open headroom now:** float-path tess-3/16t scaling (Lead #1 below), A5 DCLM dot-lattice (tess 3),
+  B1 analytic SASA (tolerance). The bit-exact incremental scan well looks tapped — remaining bit-exact
+  upside is most likely in the *build* or in a genuinely different algorithm (A5), not the scan.
 
 ## Prioritized leads (tess 2 & 3 only) — re-rank each phase
 
-1. **LUT-bitmask / fully-buried-atom prize (backlog §1b).** Biggest bit-exact prize at tess 2. Build a
-   cheap, sound cap→direction bitmask (sphere index over the fixed 42/162 directions) + a neighbor-major
-   scan that stops when all directions are buried. Start by prototyping the cap-mask and instrumenting how
-   cheap it can be (must beat the ~8 dot-tests/direction the early-exit already achieves). High risk/reward.
-2. **Float-path scaling at tess 3 / 16 threads.** Does the FloatVector boxing/bandwidth collapse (C9) begin
+0. ~~**LUT-bitmask / fully-buried-atom prize.**~~ **CLOSED-NEGATIVE (Phase 1).** Infeasible; do not
+   re-try. See Current state above and LOG Phase 1.
+1. **Float-path scaling at tess 3 / 16 threads.** Does the FloatVector boxing/bandwidth collapse (C9) begin
    at tess 3? Measure FloatNumericalSurfaceV2 vs V3 at tess 3, -t 1/4/8/16 (idle). If tess-3 float also
    collapses at 16t, that's in scope: confirm the boxing hypothesis (`-prof gc` alloc.rate.norm) and try
    restructuring the float scan so its `FloatVector`s stay method-local and scalar-replace (lesson 3). A
@@ -122,5 +127,12 @@ Two output contracts (both legitimate; pursue both):
 
 ---
 
-*Phase 0 (this file's creation): kickoff authored. Next agent: read the docs above, then start at Lead #1
-(LUT-bitmask prize) — begin with the cheap cap-mask prototype + instrumentation, not a full variant.*
+*Phase 1 done: the LUT-bitmask / fully-buried-atom prize (old Lead #1) is CLOSED-NEGATIVE — a cheap
+count-based kill-experiment (`BitmaskFeasibilityTest`) showed the floor is unreachable and a sound cheap
+LUT is 85–92% false positives, slower than the SIMD baseline. No variant scaffolded (the cheap probe
+saved that cost). Meta-lesson recorded: counting headroom ≠ wall-clock headroom vs a vectorized baseline.*
+
+*Next agent: start at Lead #1 (float-path tess-3/16t scaling). The count/alloc-probe half (`-prof gc`
+alloc.rate.norm of FloatNumericalSurfaceV2 vs V3 at tess 3, and ScanInstrumentation-style counts) is
+load-immune and can start now; the timing half needs an idle box (load < 1.5 — it was ~25 during
+Phase 1, so the bench is still pending). De-risk cheaply first (the A2/A7/C2/§1b pattern).*

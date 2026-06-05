@@ -438,6 +438,22 @@ within this table.
   cannot be reused; it is correctly per-build.
 - **Reciprocal-multiply for the threshold division.** Breaks bit-exactness (see lesson 11).
 - **Parameterizing the vector species.** Breaks intrinsification (see lesson 1).
+- **LUT-bitmask / fully-buried-atom neighbor-major scan** (the long-standing "biggest open bit-exact
+  prize", backlog §1b). Closed as infeasible after an end-to-end count-based feasibility study
+  (`BitmaskFeasibilityTest`, autoresearch Phase 1). The idea: a neighbor-major scan that maps each
+  neighbor's cap to a precomputed direction bitmask and gets an atom-level early-exit on the 61% of
+  fully-buried atoms (57% of tess-2 scan tests). Measured: the *perfect-mask* floor is only 11.9% of
+  current scalar dot-tests (tess 2; 18% at tess 3), but the current scan is already 4-wide SIMD with
+  sequential access (~25% wall-clock of its scalar count), so even a free perfect mask caps at ~2× on a
+  ~34%-of-CPU op (≤~17% total) — and a free perfect mask doesn't exist. A *sound* cheap LUT (verified 0
+  soundness violations over the corpus) runs 85–92% false positives even at a 0.4–1.2 MB table, so the
+  realistic candidate scan is 18.6%/28% of current scalar tests done with scattered gathers + a
+  per-neighbor sqrt+3-divides mask-build + a large LUT thrashing shared L3 at 16–32 threads — slower
+  than the SIMD baseline. The approximate pure-OR form is also dead (85% false positives → drastic area
+  under-count). **Meta-lesson: counting headroom ≠ wall-clock headroom when the baseline is vectorized**
+  — the fully-buried atoms are cheap precisely because their directions bury fast, and the per-direction
+  early-exit + last-occluder hint already minimizes scalar tests *and* vectorizes. (Same trap as A1/A4,
+  now quantified.) See `autoresearch/LOG.md` Phase 1.
 
 ---
 
