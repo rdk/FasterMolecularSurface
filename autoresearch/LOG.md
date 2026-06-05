@@ -410,3 +410,66 @@ bandwidth-bound distance pass (note: V18 SortedCoords already tried coordinate s
 before treating Morton as novel). Each returned idea gets a cheap in-tree kill-experiment, held to the
 Phase-1 lens (beat 4-wide-SIMD sequential) and the tess-3 share insight (build-only wins dilute; C9 blocks
 float). Running the `deep-research` skill now.
+
+### Phase 7 — RESULTS (deep-research, 5 angles, 19 sources, 25 claims adversarially verified 24/1)
+
+Full report: `autoresearch/results/phase7-deep-research.json`. Triage against the baseline (must produce a
+POINT SET; must beat 4-wide-SIMD sequential; build-only wins dilute at tess 3):
+
+- **Power-diagram / weighted-alpha-complex exact SASA (dSASA 2024) — DEAD, independently confirmed.**
+  Verified (3-0): it produces ONLY scalar area + analytical derivatives, emits NO surface point set —
+  categorically fails p2rank's point-set need. This re-derives the B1 closure (Phase 4) via a totally
+  different method. (Also: robust 3D regular/power Delaunay exists only in native C++ (CGAL GPLv3 / Geogram
+  BSD-3) — JNI-only from the JVM — but moot since the output is area-only.)
+- **Fast-SASA impl survey (Q3) + neighbor reuse (Q4) — no distinguishing accelerator found.** No claim
+  survived verification identifying a trick (whole-atom culling, reuse, reordering, adaptive sampling) that
+  this dedup'd SIMD cell-list Shrake-Rupley kernel lacks.
+- **Spatial reordering / Morton-Hilbert (Q1) — the one "maybe", CLOSED by convergent evidence.** The
+  mechanism is real (LAMMPS, GROMACS reorder atoms) but the verified caveat is decisive: the gains
+  (LAMMPS 0–3.4×, SFC 25–75% cache misses / up to 50%) come from large DRAM-resident many-timestep
+  workloads; my build is one-shot, cache-resident (tens of KB), ALREADY cell-bucket-ordered — "the
+  working-set mechanism that drives those gains is largely absent ... expect small gains," and it dilutes
+  at tess 3. Convergent in-tree evidence closes it without building a variant: (i) **V18 SortedCoords
+  already** makes the candidate-coordinate reads sequential (cell-sorted SoA — it eliminated exactly the
+  random gather Morton would target; it was the compute champion); (ii) **backlog line 60** already records
+  "Morton/Z-order atom relabeling — bit-exact but modest, and the output inverse-permutation/point re-sort
+  may eat the locality gain." Three independent lines agree → not worth a variant. (Also perf counters are
+  blocked on this box, so the cache-miss delta the research wants couldn't even be measured directly.)
+
+**Verdict: deep-research surfaced no new viable lever; it independently confirms the search is complete.**
+
+---
+
+## SESSION CONCLUSION — the tess-2/3 single-protein surface is at a strong local optimum
+
+Seven phases, zero promotable wins, but a sharply tightened map and several long-open questions closed
+with hard data. The structural picture is now complete and triangulated (in-tree experiments + external
+deep-research agree):
+
+1. **The occlusion SCAN is a dead well.** Direction-major SIMD + last-occluder hint + per-direction
+   early-exit is near-minimal in scalar tests AND vectorizes AND is sequential. Every spatial-narrowing
+   alternative (bitmask §1b/Phase 1, DCLM A5/Phase 3, region-hint C3) trades that for gather + a
+   per-neighbor cap→direction mapping and loses in wall-clock. Decisive lens: a scalar-test-count win must
+   beat a 4-wide-SIMD sequential baseline (~4 scalar ≈ 1 unit wall-clock; gather is strictly worse).
+2. **The BUILD is tapped.** Distance pass is 90% (Phase 5), already SIMD (A6) and locality-optimized
+   (V18 cell-sorted coords); the 6.27× candidate waste is inherent uniform-grid geometry (tighter grid =
+   A2 negative); Morton relabeling is modest (Phase 7). Float build (C1) helps only at tess 2 — it dilutes
+   at tess 3 where the scan dominates (Phase 6).
+3. **Float can't widen the tess-3 SIMD.** The float (8-lane) scan's Vector-API intrinsics deopt to boxing
+   under concurrency at tess ≥ 3 (C9 CONFIRMED, Phase 2: 13.6 MB/op → 1.084 GB/op, 7–23× slower); not
+   fixable in source. Float surfaces are tess-2-only.
+4. **Different-algorithm exact SASA is area-only.** Analytic Gauss-Bonnet (B1/Phase 4) and power-diagram
+   (Phase 7) both emit no point set and differ ~21% per-atom from the sampled surface — they cannot serve
+   p2rank's point consumer.
+
+**The recommended surfaces stand:** bit-exact default `DistinctPackedNumericalSurfaceV3`; tess-2 float
+`FloatNumericalSurfaceV2`. No production change this session.
+
+**Only directions left are out of the tess-2/3 single-protein scope:** whole-dataset batch / GPU
+throughput (C4), intra-protein parallelism for single-large-protein latency (C5), or a native power-diagram
+path for an AREA-ONLY consumer (not p2rank). These need a scope/requirements decision from the human, not
+another in-tree kill-experiment.
+
+**Stopping the autoresearch loop here** (kickoff stop condition met: leads exhausted + several new ideas
+generated and tested, all documented). Re-arm `/loop execute the autoresearch kickoff` if a new direction
+or a scope change (batch mode, area-only consumer, a different operating point) opens up.

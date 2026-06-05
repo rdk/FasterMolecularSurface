@@ -1,0 +1,255 @@
+{
+  "summary": "Deep research harness — fan-out web searches, fetch sources, adversarially verify claims, synthesize a cited report.",
+  "agentCount": 101,
+  "logs": [
+    "Q: Context: I maintain a heavily-optimized numerical Shrake-Rupley solvent-accessib…",
+    "Decomposed into 5 angles: MD neighbor-build spatial reordering / bandwidth, Robust weighted/regular Delaunay from JVM, Power-diagram / alpha-complex exact SASA O(N log N), Fastest open-source SASA generator internals, Neighbor-list reuse across poses / radius sweep",
+    "Neighbor-list reuse across poses / radius sweep: 6 results",
+    "Power-diagram / alpha-complex exact SASA O(N log N): 6 results",
+    "MD neighbor-build spatial reordering / bandwidth: 6 results",
+    "MD neighbor-build spatial reordering / bandwidth: 3 novel (3 filtered)",
+    "Robust weighted/regular Delaunay from JVM: 6 results",
+    "Robust weighted/regular Delaunay from JVM: 2 novel (4 filtered)",
+    "Fastest open-source SASA generator internals: 6 results",
+    "Fastest open-source SASA generator internals: 2 novel (4 filtered)",
+    "Fetched 19 sources → 86 claims → verifying top 25",
+    "\"LAMMPS reorders atoms spatially by binning so that…\": 3-0 ✓",
+    "\"The proposed acceleration groups a fixed number of…\": 3-0 ✓",
+    "\"In LAMMPS' own tests, spatial atom sorting yields …\": 3-0 ✓",
+    "\"Achieving good SIMD utilization for cutoff-limited…\": 2-1 ✓",
+    "\"Reordering 3D point cloud data along Morton (Z-ord…\": 2-1 ✓",
+    "\"Geogram provides a robust 3D weighted/regular (pow…\": 3-0 ✓",
+    "\"Geogram's geometric decisions use exact predicates…\": 3-0 ✓",
+    "\"Geogram's Delaunay3D API is C++ native; this wiki …\": 3-0 ✓",
+    "\"The cache-miss reduction is causally tied to local…\": 3-0 ✓",
+    "\"Geogram provides a Delaunay Pluggable Software Mod…\": 3-0 ✓",
+    "\"The Delaunay PSM is distributed as a single self-c…\": 3-0 ✓",
+    "\"Geogram supplies a Predicates PSM implementing exa…\": 3-0 ✓",
+    "\"dSASA computes SASA via weighted Delaunay tetrahed…\": 3-0 ✓",
+    "\"The dominating cost is the weighted Delaunay step …\": 3-0 ✓",
+    "\"dSASA produces ONLY surface area and analytical at…\": 3-0 ✓",
+    "\"dSASA computes exact SASA via weighted Delaunay te…\": 3-0 ✓",
+    "\"dSASA produces only per-atom SASA area values, not…\": 3-0 ✓",
+    "\"The dSASA exact-SASA pipeline depends on the gReg3…\": 3-0 ✓",
+    "\"CGAL provides Regular_triangulation_3, an incremen…\": 3-0 ✓",
+    "\"CGAL's Regular_triangulation_3 is a C++ header/tem…\": 0-3 ✗",
+    "\"Devillers and Teillaud present a symbolic perturba…\": 3-0 ✓",
+    "\"CGAL's implementation is robust to cocircular/cosp…\": 3-0 ✓",
+    "\"The perturbation scheme is implemented in CGAL and…\": 3-0 ✓",
+    "\"dSASA computes exact SASA via 3D weighted Delaunay…\": 3-0 ✓",
+    "\"dSASA produces only scalar atomic/molecular SASA a…\": 3-0 ✓",
+    "Verify done: 25 claims → 24 confirmed, 1 killed"
+  ],
+  "result": {
+    "question": "Context: I maintain a heavily-optimized numerical Shrake-Rupley solvent-accessible-surface (SASA) kernel in Java (incubator Vector API / SIMD-256, GraalVM 25). For each atom it tessellates a unit sphere into a fixed set of distinct directions (icosahedral: 42 directions at level 2, 162 at level 3); a direction is \"buried\" if any neighbor atom's expanded sphere occludes it (dot(diff,dir) > threshold); surviving directions form the surface POINT SET and their weighted count gives per-atom area. It is already: structure-of-arrays, cell-list neighbor build with a per-pair overlap prune (d < Ri+Rj), icosahedral direction deduplication (~5.7x), a last-occluder hint + per-direction early-exit, a 4-wide-SIMD distance pass in the build, and a flat zero-copy point store. Operating point is tessellation level 2 and 3, single-thread AND 16-thread (one protein per core, proteins of 300-5000 atoms). The consumer (p2rank, protein pocket prediction) needs the SURFACE POINT SET, not just scalar area. I need bit-exact reproduction by default; approximate methods are acceptable only as opt-in variants validated to a tolerance.\n\nI have already empirically CLOSED these (do not re-derive them): (a) neighbor-major cap->direction bitmask / fully-buried-atom culling — measured, loses to the SIMD direction-major scan because it becomes gather-bound; (b) the Double Cubic Lattice Method second-lattice-over-dots (Eisenhaber 1995) — same gather penalty; (c) exact analytic per-atom SASA via Gauss-Bonnet arcs — produces area only (no point set), differs from the sampled surface by ~21% per-atom, and is O(neighbors^2) trig so likely slower. The scan is established as a \"dead well\" and the cell-list build's distance pass is bandwidth-bound at 16 threads.\n\nResearch these specific OPEN questions and give concrete, cited, implementable answers (algorithm, complexity, accuracy, expected speedup regime at tess level 2/3, whether it preserves a bit-exact POINT SET or needs a tolerance variant, a cheap first de-risking experiment, and existing open-source code with license flags):\n\n1. SPATIAL REORDERING for the bandwidth-bound neighbor build: do the fastest molecular-geometry/SASA/MD codes reorder atoms along a Morton/Z-order or Hilbert space-filling curve (or via the cell-list bucket order) to improve cache locality and reduce memory traffic in the per-pair distance pass and the adjacency (CSR) scatter? How much does it actually help an already cell-list + SoA + SIMD build that is memory-bandwidth-bound across many concurrent threads? Cite MD neighbor-list literature (GROMACS, LAMMPS, NAMD), particle-simulation Morton-reorder results, and any SASA code that does it.\n\n2. POWER DIAGRAM / weighted-alpha-complex exact SASA in O(N log N) (Edelsbrunner; the 2024 dSASA work). Crucially: is there a ROBUST 3D weighted (regular/power) Delaunay triangulation usable from Java today — pure-Java, or a maintained JNI/native binding — that handles cocircular/degenerate molecular inputs? This is the hard dependency; if no usable Java-accessible robust regular-triangulation exists, this path is dead for me. Survey CGAL (license/JNI), Geogram, qhull/regular-triangulation, Tetgen, and any JVM-native computational-geometry libs.\n\n3. SURVEY the fastest open-source SASA / molecular-surface point-set generators (FreeSASA, RustSASA, mdtraj/biotite Shrake-Rupley, GROMACS gmx sasa, dr_sasa, PowerSASA, POPS, MSMS, NanoShaper, EDTSurf). For each: core algorithm, what specifically makes it fast, SIMD/GPU use, and — most important — any acceleration (whole-atom exposure culling, neighbor-list reuse, space-filling-curve reordering, hierarchical/coarse pre-pass, lower-discrepancy or adaptive sampling) that an already-dedup'd SIMD cell-list Shrake-Rupley kernel like mine would NOT already have. License-flag anything whose code (not just idea) is reusable.\n\n4. NEIGHBOR-LIST / WORK REUSE across many related SASA evaluations: Verlet-list-with-skin and sort-and-sweep broad-phase — does any pocket-prediction or docking pipeline reuse the neighbor list or grid across perturbed poses / a solvent-radius sweep on fixed coordinates? When is reuse a net win vs rebuilding a cell list for ~300-5000 irregularly distributed spheres?\n\nFor each finding, explicitly judge it against my baseline: it must produce the surface POINT SET (not just area) and beat a 4-wide-SIMD sequential-access kernel at tess 2/3 on 1 and 16 threads, and at tess 3 the per-direction double-precision scan dominates total time (so build-only speedups dilute there). Flag anything you cannot verify rather than guessing.",
+    "summary": "Across the four open questions, the verified evidence yields a clear verdict against most paths and a cautious \"maybe\" for one. (Q1 spatial reordering) Every fast MD/particle code (LAMMPS, GROMACS) does reorder atoms spatially, and SFC/Morton reordering measurably cuts cache misses and runtime — but the documented benefits (LAMMPS 0–3-4x; SFC 25–75% fewer cache misses, up to 50% faster) come from large, DRAM-resident, many-timestep workloads, NOT a one-shot, already-cell-list+SoA, L1/L2-resident 300–5000-atom SASA build; no source demonstrates transfer to your regime, so expect small gains. (Q2 power-diagram exact SASA) A robust 3D weighted/regular (power) Delaunay triangulation handling molecular degeneracies definitively exists and is shipped (CGAL Regular_triangulation_3 and Geogram Delaunay PSM, both via exact predicates + Devillers–Teillaud symbolic perturbation), but ONLY as native C++ — there is no pure-Java implementation, so the JVM needs a JNI/native binding (CGAL ships SWIG/JNI bindings; Geogram does not). However, the entire power-diagram path (dSASA 2024) produces ONLY scalar area + analytical derivatives and emits NO surface point set, so it categorically fails your hard requirement and matches your already-closed analytic finding (c). (Q3/Q4) The surface-generator and neighbor-reuse questions did not survive verification with citable findings. Net: spatial reordering is the only line worth a cheap de-risking experiment; the power-diagram path is dead for a point-set consumer regardless of the (solvable) Java-binding question.",
+    "findings": [
+      {
+        "claim": "The fastest MD/particle codes do reorder atoms spatially (LAMMPS bins+reorders so spatially-near atoms are adjacent in the 1D list; GROMACS cluster-pair scheme groups particles into spatial clusters), and the explicit motivation is cache performance / SIMD utilization for cutoff-limited pair loops. This validates the premise behind Q1.",
+        "confidence": "high",
+        "sources": [
+          "https://docs.lammps.org/atom_modify.html",
+          "https://arxiv.org/abs/1306.1737"
+        ],
+        "evidence": "LAMMPS docs: atoms are binned then 'reordered so that atoms in the same bin are adjacent ... This can improve cache performance when pairwise interactions and neighbor lists are computed.' Pall & Hess (Comput. Phys. Commun. 2013, GROMACS Verlet cluster-pair): 'when pairs only interact within a certain cut-off distance, good SIMD utilization can only be achieved by reordering input and output data, which quickly becomes a limiting factor'; their fix groups 2/4/8 particles into spatial clusters and computes all cluster-pair interactions, measured 3.3x higher pair rate (1.4-1.8x effective after wasted zero-pairs) on AVX-256. Maps to your distance/build pass, NOT your direction-major occlusion scan.",
+        "vote": "3-0 (LAMMPS reorder), 3-0 (cluster grouping), 2-1 (reordering is the SIMD bottleneck)"
+      },
+      {
+        "claim": "Q1 magnitude caveat: the measured speedups from spatial reordering come from regimes that do not match your baseline, so the upper-end numbers almost certainly do not transfer to your already-cell-list+SoA, L1/L2-resident, one-shot 300-5000-atom build.",
+        "confidence": "high",
+        "sources": [
+          "https://docs.lammps.org/atom_modify.html",
+          "https://arxiv.org/pdf/2603.06771"
+        ],
+        "evidence": "LAMMPS: 'In tests we have done, the speed-up can range from zero to 3-4x' — but this is whole-simulation, many-timestep cache locality (liquids > solids), not a single-pass build, and the honest lower bound is zero. The SFC paper (arXiv:2603.06771, 2026) reports 'reducing the number of cache misses from 25% to 75% and runtime by up to 50%' — but EXCLUSIVELY on 10M-721M-point DRAM-resident LiDAR clouds where reordering converts random fetches to streaming; 'up to 50%' is an explicit best-case. Your working set is tens of KB (cache-resident) and already bucket-ordered by the cell list, so the working-set mechanism that drives those gains is largely absent. No source demonstrates transfer to a small, already-ordered, cache-resident molecular kernel. At tess 3 your double-precision direction scan dominates, so any build-only win dilutes further.",
+        "vote": "3-0 (LAMMPS 0-to-3-4x), 2-1 (SFC 25-75%/50%)"
+      },
+      {
+        "claim": "Better memory locality from SFC reordering is the causal mechanism for the cache-miss reduction (validated via a kNN locality histogram correlated with measured L1d misses) — i.e. the lever is real, its size is just a function of working-set/locality, which is your weak point for justifying the optimization.",
+        "confidence": "high",
+        "sources": [
+          "https://arxiv.org/pdf/2603.06771"
+        ],
+        "evidence": "arXiv:2603.06771 introduces a 'kNN locality histogram ... found to be directly related to cache misses and search performance,' with Table 4 showing its skewness coefficient tracking L1d cache misses across datasets. The relationship is presented observationally (correlation) but the underlying physics (locality -> fewer misses) is mainstream. Implication for your de-risking experiment: measure the locality/miss delta directly rather than assuming a fixed percentage.",
+        "vote": "3-0"
+      },
+      {
+        "claim": "A robust 3D weighted/regular (power) Delaunay triangulation that handles cocircular/cospherical degenerate molecular inputs DOES exist and is shipped in C++ (CGAL Regular_triangulation_3 and Geogram Delaunay PSM), using exact predicates + the Devillers-Teillaud symbolic perturbation; the degeneracy-robustness blocker is solved in native C++.",
+        "confidence": "high",
+        "sources": [
+          "https://doc.cgal.org/latest/Triangulation_3/index.html",
+          "https://inria.hal.science/inria-00560388v1",
+          "https://github.com/BrunoLevy/geogram/wiki/Delaunay3D",
+          "https://brunolevy.github.io/geogram/geogram_PSM.html",
+          "https://inria.hal.science/inria-00166710"
+        ],
+        "evidence": "CGAL: 'The class Regular_triangulation_3 implements incremental regular triangulations, also known as weighted Delaunay triangulations' with weighted points (p in R^3, w_p in R), and 'CGAL computes a uniquely defined regular triangulation even in degenerate cases' via exact-predicates kernel + symbolic perturbation (kernel-dependent: needs an exact-predicates kernel). Devillers & Teillaud (Comput. Geom. 2011): a 'new symbolic perturbation ... always define these [Delaunay AND weighted Delaunay] triangulations in a unique way, as soon as the points are not all coplanar ... implemented in CGAL ... both vertex insertion and vertex removal are fully robust.' Geogram: PeriodicDelaunay3d 'also implements weighted triangulations (also called regular triangulations)'; the Delaunay PSM provides 'Sequential and parallel Delaunay triangulation and power diagrams in 2D and 3D' using 'exact geometric predicates with symbolic perturbation (SOS).'",
+        "vote": "3-0 (all six underlying claims)"
+      },
+      {
+        "claim": "No pure-Java robust regular/power triangulation exists; using either CGAL or Geogram from the JVM requires a native/JNI binding. CGAL ships maintained SWIG/JNI bindings (GPL/LGPL license flags apply); Geogram is BSD-3 and distributes a single-file drop-in C++ PSM but exposes no Java binding (only C++/R).",
+        "confidence": "medium",
+        "sources": [
+          "https://github.com/BrunoLevy/geogram/wiki/Delaunay3D",
+          "https://brunolevy.github.io/geogram/geogram_PSM.html",
+          "https://doc.cgal.org/latest/Triangulation_3/index.html"
+        ],
+        "evidence": "Geogram Delaunay3D wiki: all code examples are C++ (SmartPointer<PeriodicDelaunay3d>), no Java/JNI mentioned; corroborating searches found only an R wrapper, no Java/Maven artifact. The Geogram Delaunay PSM (github.com/BrunoLevy/geogram.psm.Delaunay) is a standalone BSD-3 Delaunay_psm.cpp/.h pair with no dependency on the full library (compiles with g++ -O3 -fopenmp ... -ldl -lm, no geogram link) - attractive for a thin JNI wrapper. CGAL is C++/template; the verifier panel REFUTED (0-3) the assertion that CGAL has no Java binding, indicating the maintained cgal-swig-bindings (SWIG/JNI) repo exposes Regular_triangulation_3 to Java. LICENSE FLAGS: CGAL triangulation packages are GPLv3+ (commercial license available) - copyleft, flag for redistribution; Geogram is BSD-3 (permissive). I could not independently re-verify the current state/completeness of cgal-swig-bindings in this synthesis - flag for confirmation.",
+        "vote": "3-0 (Geogram C++-only on that page), refuted 0-3 (CGAL has 'no' Java binding)"
+      },
+      {
+        "claim": "The power-diagram / weighted-alpha-complex exact-SASA path (dSASA, JCTC 2024) is O(N log N) dominated by the weighted Delaunay step (~70% wall-clock) BUT produces ONLY scalar per-atom/molecular area and analytical derivatives - it emits NO surface point set, so it categorically fails your hard requirement and matches your already-closed analytic finding (c).",
+        "confidence": "high",
+        "sources": [
+          "https://arxiv.org/html/2401.10462v1",
+          "https://pmc.ncbi.nlm.nih.gov/articles/PMC11530138/",
+          "https://pubs.acs.org/doi/abs/10.1021/acs.jctc.3c01366"
+        ],
+        "evidence": "dSASA computes SASA via 3D weighted Delaunay tetrahedrization + Laguerre intersection cells + inclusion-exclusion; 'This step has computation complexity O(N log N) and is the dominating part of the method' ('nearly 70% of wall-clock'). Output is explicitly scalar: 'The boundary area of the Laguerre intersection part LI_i of an exterior atom is the SASA value S_i = surf(LI_i)' plus analytical gradients for implicit-solvent MD forces; it reproduces only the AREA values of the icosahedral method to >98%, not its point set. WebFetch conclusion: 'dSASA does not produce a surface point set.' dSASA depends on the gReg3D CUDA/GPU regular-triangulation library (NVIDIA-only), not a CPU/Java library, with no CGAL dependency. CAVEAT: the claim's 'NOT alpha complexes' framing is a false dichotomy - the paper uses alpha-complex theory, wDT, and the Laguerre diagram together (alpha complex is a subcomplex of the wDT, Laguerre is its dual); this does not change the point-set verdict.",
+        "vote": "3-0 (all six underlying dSASA claims)"
+      }
+    ],
+    "caveats": "Time-sensitivity / applicability: the SFC reordering numbers (25-75% fewer cache misses, up to 50% faster) and LAMMPS (0 to 3-4x) come from regimes that do not match your baseline (massive DRAM-resident point clouds; many-timestep liquid MD). No verified source measures spatial reordering on a small (tens of KB, cache-resident), already-cell-list-ordered, one-shot SASA build, so the magnitude for YOUR kernel is unknown and likely small; treat the literature as 'mechanism is real, size unproven for you.' The SFC and the SIMD-reordering-bottleneck claims were 2-1 splits (the dissent was about applicability/magnitude, not existence). The CGAL Java-binding status rests on a refuted (0-3) negative claim implying cgal-swig-bindings exists; I did not independently confirm the binding's current completeness, maintenance, or that it exposes Regular_triangulation_3 with weights - verify before relying on it, and note CGAL's GPLv3 copyleft vs Geogram's permissive BSD-3. Crucially, the power-diagram path's Java-binding question is moot for your use case because dSASA/regular-triangulation SASA yields area only, not a point set. The whole power-diagram literature here addresses AREA, not the sampled surface POINT SET that p2rank consumes.",
+    "openQuestions": [
+      "Q3 (fastest open-source SASA/molecular-surface POINT-SET generators: FreeSASA, RustSASA, mdtraj/biotite, gmx sasa, dr_sasa, PowerSASA, POPS, MSMS, NanoShaper, EDTSurf) produced NO claims that survived verification - their core algorithms, SIMD/GPU use, reusable accelerations, and license flags remain unresearched.",
+      "Q4 (neighbor-list / work reuse across perturbed poses or a solvent-radius sweep: Verlet-with-skin, sort-and-sweep broad-phase, and whether any pocket-prediction/docking pipeline reuses the grid/list vs rebuilding for 300-5000 irregular spheres) produced NO surviving claims and is unanswered.",
+      "Does a maintained CGAL SWIG/JNI Java binding currently expose Regular_triangulation_3 with weighted points, and at what build/license cost (GPLv3) - and is a thin JNI wrapper over the BSD-3 Geogram Delaunay PSM the more practical JVM route?",
+      "What is the actual measured cache-miss / wall-clock delta from cell-list bucket-order vs Morton/Hilbert reorder on YOUR specific 300-5000-atom SoA build at 1 and 16 threads (the cheap de-risking experiment that no cited source substitutes for)?"
+    ],
+    "refuted": [
+      {
+        "claim": "CGAL's Regular_triangulation_3 is a C++ header/template library; the documentation provides no Java binding, meaning it is only usable from the JVM via a custom JNI/native bridge (the documented hard dependency for this research path).",
+        "vote": "0-3",
+        "source": "https://doc.cgal.org/latest/Triangulation_3/index.html"
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://docs.lammps.org/atom_modify.html",
+        "quality": "primary",
+        "angle": "MD neighbor-build spatial reordering / bandwidth",
+        "claimCount": 5
+      },
+      {
+        "url": "https://arxiv.org/abs/1306.1737",
+        "quality": "primary",
+        "angle": "MD neighbor-build spatial reordering / bandwidth",
+        "claimCount": 5
+      },
+      {
+        "url": "https://arxiv.org/pdf/2603.06771",
+        "quality": "primary",
+        "angle": "MD neighbor-build spatial reordering / bandwidth",
+        "claimCount": 5
+      },
+      {
+        "url": "https://github.com/BrunoLevy/geogram/wiki/Delaunay3D",
+        "quality": "primary",
+        "angle": "Robust weighted/regular Delaunay from JVM",
+        "claimCount": 4
+      },
+      {
+        "url": "https://brunolevy.github.io/geogram/geogram_PSM.html",
+        "quality": "primary",
+        "angle": "Robust weighted/regular Delaunay from JVM",
+        "claimCount": 5
+      },
+      {
+        "url": "https://pubs.acs.org/doi/abs/10.1021/acs.jctc.3c01366",
+        "quality": "primary",
+        "angle": "Power-diagram / alpha-complex exact SASA O(N log N)",
+        "claimCount": 5
+      },
+      {
+        "url": "https://arxiv.org/html/2401.10462v1",
+        "quality": "primary",
+        "angle": "Power-diagram / alpha-complex exact SASA O(N log N)",
+        "claimCount": 5
+      },
+      {
+        "url": "https://doc.cgal.org/latest/Triangulation_3/index.html",
+        "quality": "primary",
+        "angle": "Power-diagram / alpha-complex exact SASA O(N log N)",
+        "claimCount": 5
+      },
+      {
+        "url": "https://inria.hal.science/inria-00560388v1",
+        "quality": "primary",
+        "angle": "Power-diagram / alpha-complex exact SASA O(N log N)",
+        "claimCount": 4
+      },
+      {
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11530138/",
+        "quality": "primary",
+        "angle": "Power-diagram / alpha-complex exact SASA O(N log N)",
+        "claimCount": 5
+      },
+      {
+        "url": "https://scite.ai/reports/analytical-shape-computation-of-macromolecules-jmxXWJ",
+        "quality": "primary",
+        "angle": "Power-diagram / alpha-complex exact SASA O(N log N)",
+        "claimCount": 4
+      },
+      {
+        "url": "https://github.com/maxall41/RustSASA",
+        "quality": "primary",
+        "angle": "Fastest open-source SASA generator internals",
+        "claimCount": 5
+      },
+      {
+        "url": "https://github.com/mittinatten/freesasa",
+        "quality": "primary",
+        "angle": "Fastest open-source SASA generator internals",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.sciencedirect.com/science/article/abs/pii/S0010465510001827",
+        "quality": "primary",
+        "angle": "Neighbor-list reuse across poses / radius sweep",
+        "claimCount": 4
+      },
+      {
+        "url": "https://autodock-vina.readthedocs.io/en/latest/docking_basic.html",
+        "quality": "secondary",
+        "angle": "Neighbor-list reuse across poses / radius sweep",
+        "claimCount": 3
+      },
+      {
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10720336/",
+        "quality": "primary",
+        "angle": "Neighbor-list reuse across poses / radius sweep",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.sciencedirect.com/science/article/abs/pii/S0010465517303041",
+        "quality": "primary",
+        "angle": "Neighbor-list reuse across poses / radius sweep",
+        "claimCount": 3
+      },
+      {
+        "url": "https://orbilu.uni.lu/bitstream/10993/42706/1/202208%20-%20Author%20Preprint%20ArXiv.pdf",
+        "quality": "primary",
+        "angle": "Neighbor-list reuse across poses / radius sweep",
+        "claimCount": 5
+      },
+      {
+        "url": "https://pubmed.ncbi.nlm.nih.gov/21952937/",
+        "quality": "primary",
+        "angle": "Neighbor-list reuse across poses / radius sweep",
+        "claimCount": 4
+      }
+    ],
+    "stats": {
+      "angles": 5,
+      "sourcesFetched": 19,
+      "claimsExtracted": 86,
+      "claimsVerified": 25,
+      "confirmed": 24,
+      "killed": 1,
+      "afterSynthesis": 6,
+      "urlDupes": 1,
+      "budgetDropped": 10,
+      "agentCalls": 101
+    }
+  }
+}

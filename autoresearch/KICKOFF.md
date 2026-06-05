@@ -116,18 +116,26 @@ Two output contracts (both legitimate; pursue both):
 - ~~**Re-profile the BUILD.**~~ **DONE (Phase 5) → TAPPED;** float-build-at-tess-3 (Phase 6) negative. See
   Current state. Distance pass 90%, already SIMD; tighter-grid is the A2 negative; float build dilutes at
   tess 3.
-1. **Source NOVEL approaches — TOP LEAD (generative).** All in-tree incremental leads are exhausted. Run the
-   backlog §3 deep-research prompt (use the `deep-research` skill, or WebSearch) to find approaches NOT yet
-   tried: e.g. published fast-SASA methods that produce a POINT SET (not just area) and could beat
-   Shrake-Rupley dot-sampling at tess 2/3 — power diagrams / additively-weighted Voronoi (alpha-complex)
-   restricted to the accessible surface, the reduced-surface / Connolly construction, GPU-batch only if the
-   scope widens. For EACH returned idea: does it produce the point set p2rank needs? is it plausibly faster
-   than the current SIMD scan+build at tess 2/3 / 16t? cheap kill-experiment BEFORE building. Hold every
-   idea to the Phase-1 meta-lens (must beat a 4-wide-SIMD sequential baseline) and the tess-3 share insight
-   (build-only wins dilute; the double scan dominates tess 3 and float can't widen it, C9).
-2. **Or conclude.** If the deep-research yields nothing that clears the bar, the honest result is: the
-   tess-2/3 single-protein surface is at a strong local optimum (default `DistinctPackedNumericalSurfaceV3`;
-   float `FloatNumericalSurfaceV2` at tess 2). Record that and stop, rather than manufacture marginal churn.
+- ~~**Source NOVEL approaches (deep-research).**~~ **DONE (Phase 7) — no new viable lever.** Deep-research
+  (5 angles, 19 sources, 24/25 claims verified) independently confirmed the search is complete: power-diagram
+  exact SASA is area-only (no point set, re-derives B1); no fast-impl survey accelerator is missing; Morton
+  reorder is closed by convergent evidence (V18 already sequentializes candidate reads; backlog line 60 calls
+  full relabeling "modest"; research says gains "likely small, dilute at tess 3"). Report:
+  `autoresearch/results/phase7-deep-research.json`.
+
+**SEARCH CONCLUDED (7 phases, 0 promotable wins).** The tess-2/3 single-protein surface is at a strong local
+optimum — see the SESSION CONCLUSION in `autoresearch/LOG.md`. Recommended surfaces stand: bit-exact default
+`DistinctPackedNumericalSurfaceV3`; tess-2 float `FloatNumericalSurfaceV2`. The only remaining directions are
+OUT OF THE TESS-2/3 SINGLE-PROTEIN SCOPE and need a human scope decision, not another kill-experiment:
+- **C4 — whole-dataset batch / GPU throughput** (a distinct offering over thousands of proteins).
+- **C5 — intra-protein parallelism** for single-large-protein latency.
+- **Native power-diagram path** for an AREA-ONLY consumer (not p2rank, which needs the point set).
+- A **different operating point / requirements change** (a new tessellation, an area-only mode) would reopen
+  specific leads (e.g. C1 float build already wins at tess 2; analytic/power-diagram serve area-only).
+
+**To resume:** re-arm `/loop execute the autoresearch kickoff` once one of the above is in scope. Do NOT
+re-try the closed leads (scan bitmask/DCLM/region-hint, float scan at tess ≥ 3, analytic/power-diagram for
+points, tighter grid, Morton relabeling) — read the SESSION CONCLUSION and `scan-is-a-dead-well` memory first.
 
 ## Per-phase workflow
 
@@ -180,10 +188,11 @@ neutral/noisy at 16t; build-only wins dilute at tess 3 where the double scan dom
 Scan is a dead well, build is tapped, float can't widen the tess-3 scan (C9), analytic is a different/slower
 output (B1). All cheap in-tree leads are exhausted.*
 
-*Next agent: the only productive move is GENERATIVE — run the backlog §3 deep-research prompt (via the
-`deep-research` skill / WebSearch) to source approaches not yet tried, especially fast-SASA methods that
-produce a POINT SET (power diagrams / alpha-complex, reduced-surface/Connolly). Kill-experiment each cheaply
-BEFORE building, holding it to the two hard lessons: (1) must beat a 4-wide-SIMD sequential baseline (Phase
-1), (2) tess-3 cost is the double scan, not the build, and float can't widen it (C9/Phase 6). If nothing
-clears the bar, conclude honestly that the surface is well-optimized and stop — don't manufacture marginal
-churn. Read `scan-is-a-dead-well` memory + LOG "State of the search" rounds 1 & 2 first.*
+*Phase 7 (deep-research, generative): no new viable lever — independently confirmed the surface is at a
+strong local optimum. SEARCH CONCLUDED after 7 phases / 0 promotable wins; the autoresearch loop was stopped
+here (kickoff stop condition met). The remaining directions are out of the tess-2/3 single-protein scope
+(C4 batch/GPU, C5 latency parallelism, native power-diagram for area-only) and need a human scope decision.*
+
+*To resume: re-arm `/loop execute the autoresearch kickoff` only once one of those is in scope, or the
+operating point / output contract changes. Read the SESSION CONCLUSION in LOG.md and the `scan-is-a-dead-well`
+memory FIRST, and do not re-try any closed lead.*
