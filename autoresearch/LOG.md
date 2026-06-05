@@ -286,3 +286,49 @@ two alt-output ideas (float tess-3 = C9; analytic = B1) are closed. The build is
 A6 (SIMD build) was the last real win, the build is the larger share at tess 2 / 16t (bandwidth-bound),
 and it has NOT been re-profiled since. Start by measuring where build time actually goes now (grid
 construction vs the distance pass vs neighbor materialization), load-immune where possible.
+
+---
+
+## Phase 5 — Lead #1 re-profile the BUILD (load-immune phase decomposition)
+
+The scan is a dead well (Phases 1–3) and both alt-output ideas are closed (float tess-3 = C9, analytic
+= B1). The build (neighbor-list construction) is the only remaining lever — A6/SIMD build was the last
+win, the build is the larger share at tess 2 / 16t (bandwidth-bound, lesson 12), and it hasn't been
+re-profiled since A6 shipped.
+
+**Hypothesis.** After A6 vectorized the distance pass (was ~47% of CPU), the remaining build cost has
+shifted. Suspect the `edges[]` intermediate in `SimdDistanceCellGridNeighborList`: every surviving pair
+is written to a growing `int[]` and then re-scattered into the CSR `adj[]` — double the adjacency write
+traffic, which matters in a bandwidth-bound build.
+
+**Cheap kill-experiment.** A test-scope instrumented CLONE of the V3 build (frozen class untouched) with
+`nanoTime` around each phase — (A) CellGrid construction, (B) expandedR, (C) SoA repack, (D) distance
+pass, (E) edges→CSR — run over the corpus (warmup + measured), reporting the % breakdown. Single-thread
+shows the compute distribution; the bandwidth bottleneck is a 16t effect, but this localizes the target.
+
+**Results (V3 SIMD build clone, corpus, single-thread, 5 measured passes).**
+
+| phase | share | ms/pass |
+|---|---|---|
+| grid construction | 0.9% | 0.11 |
+| expandedR | 1.6% | 0.19 |
+| SoA repack | 0.8% | 0.10 |
+| **distance pass** | **90.2%** | **10.7** |
+| edges→CSR | 6.5% | 0.78 |
+
+distance-pass candidate tests = 1.93M for 308k surviving pairs → **6.27 candidates/survivor (16% survive)**.
+
+**Verdict (bit-exact build): tapped within the current grid approach.** The distance pass dominates (90%);
+the `edges→CSR` intermediate I suspected is only 6.5% (not worth attacking). The pass already does the
+exact pairwise prune and is SIMD-vectorized (A6). The 6.27× candidate waste (only 16% survive) is the
+inherent geometry of a uniform grid (cell = max-pair-cutoff = 2·(maxVdw+solvent); cubic stencil vs
+spherical cutoff + radius variation), and the one lever to cut it — a tighter grid — is the A2 documented
+negative. No obvious NEW bit-exact build win single-thread.
+
+**But — a promising untested follow-up surfaced:** C1 = `DevSurfaceV24FloatBuild` (float build + DOUBLE
+scan) cuts the bandwidth-bound distance pass's coordinate traffic, won +1.6–2.8% at tess 2, and keeps the
+double scan → it has NO C9 float-scan collapse at tess 3. It has never been benchmarked at tess 3. If it
+wins there (it should: build traffic cut + no C9), it's a promotable tess-3 tolerance variant — distinct
+from FloatNumericalSurfaceV2 (which collapses at tess 3). **Next: benchmark V24 vs V3 at tess 3, -t 1/16
+(idle box), + a tess-3 tolerance gate before any speed claim.** Grabbing the current idle window for the
+benchmark.
