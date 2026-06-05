@@ -85,10 +85,14 @@ Two output contracts (both legitimate; pursue both):
   SIMD (~25% wall-clock), so the ceiling is ~2× on a ~34%-CPU op AND a cheap sound LUT is 85–92% false
   positives. **Meta-lesson: counting headroom ≠ wall-clock headroom when the baseline is vectorized.**
   Don't re-try any neighbor-major / bitmask form. (LOG Phase 1; perf-lessons "not worth doing".)
-- **Open headroom now:** A5 DCLM dot-lattice (tess 3, bit-exact, a genuinely different scan algorithm),
-  B1 analytic SASA (tolerance). Two leads are now closed (§1b bitmask; float tess-3 = C9 confirmed). The
-  bit-exact *incremental* scan well looks tapped — remaining bit-exact upside is most likely in the
-  *build* or in a genuinely different algorithm (A5), not in refining the current scan.
+- **THE SCAN IS A DEAD WELL (3 closes: §1b bitmask, float tess-3/C9, A5 DCLM).** The direction-major SIMD
+  scan (hint + early-exit) is simultaneously near-minimal in scalar tests, 4-wide vectorized, and
+  sequential. Every alternative (neighbor-major bitmask, DCLM lattice, region hint) trades that for
+  gather + a per-neighbor cap→direction mapping and loses in wall-clock even when it wins on test-count.
+  **Decisive lens: a scalar-test-count win must beat a 4-wide-SIMD sequential baseline (~4 scalar ≈ 1 unit
+  of wall-clock; gather is strictly worse than sequential).** STOP attacking the scan.
+- **Open headroom now:** B1 analytic SASA (tolerance — a different algorithm, escapes the scan well) and
+  the BUILD (A6 was the last win; re-profile it — it's the larger share at tess 2 / 16t, bandwidth-bound).
 
 ## Prioritized leads (tess 2 & 3 only) — re-rank each phase
 
@@ -96,15 +100,19 @@ Two output contracts (both legitimate; pursue both):
 - ~~**Float-path scaling at tess 3 / 16 threads.**~~ **RESOLVED (Phase 2): C9 confirmed, no source fix.**
   Float collapses at tess 3 (7×/12.5×/23× at 4/8/16t); Vector-API float intrinsics deopt to boxing under
   concurrency (1.084 GB/op). Float is tess-2-only; double V3 is the tess-3 answer. Do not re-try.
-1. **A5 — DCLM second dot-lattice (backlog A5).** Bin an atom's tessellation dots so each neighbor tests
-   only the dots in its cap. Pays most at tess 3 (162 directions). Bit-exact. Study GROMACS `sasa.cpp`.
-   **Cheap kill-experiment first:** instrument (load-immune) the avg #dots per neighbor's cap vs the 162
-   directions — if a neighbor's cap already covers most directions, binning saves little. Mind the Phase-1
-   meta-lesson: a count win must survive the vectorized baseline (don't trade SIMD+sequential for gather).
-2. **B1 — analytic per-atom SASA (backlog B1).** Opt-in; could win at tess 3. Cheap gate first: compute
-   analytic area, compare to sampled tess-2/3 on the corpus (is the gap within p2rank's tolerance?).
-3. **Generate your own.** You are encouraged to invent and test new ideas; record each in the LOG with a
-   hypothesis and a cheap kill-experiment before investing.
+- ~~**A5 — DCLM second dot-lattice.**~~ **CLOSED (Phase 3).** Same neighbor-major spatial-narrowing family
+  as §1b; its distinct survivor angle (survivors = 25% of tess-3 scan tests, DCLM could cut ~40×) is real
+  but already inside Phase 1's 28%-of-current neighbor-major total, which loses to the SIMD baseline. Do
+  not re-try.
+1. **B1 — analytic per-atom SASA (backlog B1, TOLERANCE).** TOP LEAD — a different algorithm, escapes the
+   dead scan well. **Cheap load-immune gate FIRST:** implement only the analytic per-atom *area*
+   (inclusion-exclusion of pairwise cap overlaps / Gauss-Bonnet arcs — correctness, not speed), compare
+   per-atom + total area vs sampled tess-2/3 over the corpus. Pass = gap within p2rank tolerance (total
+   ≤ 1e-4 rel, per-atom ≤ 2%); fail = closed cheaply. Only build a fast variant if the gate passes.
+2. **Re-profile the BUILD (not the scan).** A6 (SIMD build) was the last win; the build is the larger
+   share at tess 2 / 16t (bandwidth-bound). Measure where build time now goes (grid vs distance pass vs
+   neighbor materialization) before assuming it's tapped. `-prof gc` + ScanInstrumentation-style counts.
+3. **Generate your own** outside the scan/build dichotomy if 1–2 stall (e.g. backlog §3 deep-research prompt).
 
 ## Per-phase workflow
 
@@ -140,8 +148,12 @@ window showed float collapses 7×/12.5×/23× at 4/8/16t with alloc jumping 13.6
 EA-off probe proved it's Vector-API intrinsic deopt (not generic EA), so there is NO source fix. Float =
 tess-2-only; double V3 owns tess 3. Updated lesson 5, backlog C9, CLAUDE.md.*
 
-*Next agent: start at Lead #1 = A5 (DCLM second dot-lattice, bit-exact, tess-3). De-risk cheaply FIRST
-(load-immune instrumentation: avg dots-per-neighbor-cap vs 162 directions) — and hold it to the Phase-1
-meta-lesson: any count win must survive the 4-wide-SIMD + sequential-access baseline, so beware turning a
-sequential SIMD scan into a gather. Timing runs need load < 1.5 (it spiked back to ~5 right after the
-Phase-2 bench — poll before benchmarking).*
+*Phase 3 (A5 DCLM): CLOSED — the survivor angle (25% of tess-3 scan tests, ~40× cut possible) is real but
+already inside Phase 1's neighbor-major total, which loses to the SIMD baseline. Wrote a state-of-the-search
+summary in LOG: THE SCAN IS A DEAD WELL — stop attacking it.*
+
+*Next agent: start at Lead #1 = B1 (analytic per-atom SASA, TOLERANCE — a different algorithm that escapes
+the scan well). Cheap load-immune gate FIRST: a correct (not fast) analytic per-atom area, compared vs
+sampled tess-2/3 over the corpus — does the gap fit p2rank tolerance? If the analytic gate is too heavy to
+stand up quickly, fall to Lead #2 (re-profile the BUILD). Timing runs need load < 1.5 (it's been swinging
+1.5–25 on this shared box — always poll /proc/loadavg first; counting/gating work is load-immune).*

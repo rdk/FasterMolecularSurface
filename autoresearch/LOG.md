@@ -163,3 +163,81 @@ cannot become a clean tess-3 win. Lead resolved as a negative-diagnosis.
 **Next: Lead #1 is now A5 (DCLM second dot-lattice, bit-exact, tess-3 oriented) or B1 (analytic SASA,
 tolerance). Both bit-exact-scan wells look tapped; remaining upside is a different algorithm (A5) or the
 build. See KICKOFF re-rank.**
+
+---
+
+## Phase 3 — Lead #1 A5 (DCLM second dot-lattice): survivor-angle kill-experiment (count-based, load-immune)
+
+Box loaded (1-min 5.9) — counting is load-immune.
+
+**Framing.** A5/DCLM (bin the fixed tessellation dots so each neighbor tests only the dots in its cap)
+is the SAME neighbor-major spatial-narrowing family that Phase 1 closed at tess 3 (real-LUT neighbor scan
+= 28% of current scalar tests but gather-heavy + 86% false positives → loses to the SIMD direction-major
+baseline). The DCLM lattice is just a different spatial index than Phase 1's cube-face LUT; it doesn't
+escape the gather/false-positive penalty. So most of A5 is already decided.
+
+The ONE angle Phase 1 didn't isolate, and A5's strongest case: **surviving directions.** The current
+direction-major scan resolves *buried* directions fast (hint + early-exit, ~1 test via hint 50% of the
+time), but a *surviving* direction has no occluder, so it must be tested against ALL `numNeighbors`
+neighbors to confirm survival. DCLM's spatial bin could cut that to only the neighbors whose cap is near
+the direction. (C3/region-hint already tried — and lost — on the *buried* side; the survivor side is
+distinct.)
+
+**Decision rule.** Measure (a) the share of total scan tests spent on surviving directions, and (b) per
+survivor, the DCLM candidate count (neighbors whose cap-LUT includes the direction) vs `numNeighbors`.
+If survivor cost is a small share, OR survivors already have ~all neighbors as candidates, A5 has no
+opening and is closed by Phase 1 + this. If survivor cost is large AND candidates are few, there may be a
+narrow win worth a real DCLM variant — but it must still clear the Phase-1 SIMD-baseline bar.
+
+**Results (`DclmFeasibilityTest`, finest LUT grid16/bins32, corpus).**
+
+| | tess 2 | tess 3 |
+|---|---|---|
+| surviving directions | 5.4% | 5.4% |
+| survivor tests as share of all scan tests | 16.7% | 25.2% |
+| current tests per survivor (all neighbors) | 24.5 | 24.5 |
+| DCLM candidates per survivor | 0.6 | 0.6 |
+| survivor saving (DCLM) as share of ALL scan tests | 16.3% | 24.6% |
+
+**Verdict: A5/DCLM CLOSED (negative).** The survivor angle is real and striking — survivors are 25% of
+tess-3 scan tests (each scans all ~24 neighbors, no early-exit), and a sound spatial bin would cut that
+~40× (24.5 → 0.6 candidates). BUT this is NOT headroom beyond Phase 1: Phase 1's neighbor-major real-LUT
+total was already 28% of current scalar tests at tess 3, a figure that ALREADY excludes most survivor
+tests (survivors are rarely candidates). So the survivor saving is *part of* Phase 1's 28%, not additional.
+Whichever way DCLM flows (neighbor-major OR direction-major-with-per-atom-neighbor-bin), it still pays the
+per-neighbor cap→cells mapping (sqrt + divides + marking) and ends in gather-based candidate tests — the
+exact components Phase 1 showed lose to the 4-wide-SIMD sequential baseline. A cheap coarse pre-filter
+(octant histogram) can't isolate the 0.6-candidate survivors; that selectivity required the fine LUT.
+DCLM's classic win is vs a NAIVE O(D×N) scan, a premise our SIMD + hint + early-exit baseline already
+defeats. Kept the instrumentation (`DclmFeasibilityScan`/`DclmFeasibilityTest`) as evidence.
+
+Meta-lesson (reinforces Phase 1): every attempt to beat the *scan* loses because the scan is already
+SIMD + sequential + early-exit + hint; any spatial-narrowing alternative trades that for gather + a
+per-neighbor cap mapping. Survivors are the scan's worst case but can't be skipped without first paying
+to identify them.
+
+---
+
+## State of the search (after 3 consecutive closes: §1b bitmask, float tess-3/C9, A5 DCLM)
+
+Three leads closed with no win. The unifying finding: **the bit-exact SCAN is a dead well.** The
+direction-major SIMD scan with last-occluder hint + per-direction early-exit is at once (a) near-minimal
+in scalar dot-tests, (b) vectorized 4-wide, and (c) sequential in memory. Every alternative explored —
+neighbor-major bitmask (§1b), DCLM spatial dot-lattice (A5), region-binned hints (C3, earlier) — replaces
+that with gather-based access + a per-neighbor cap→direction mapping, and loses in wall-clock even when it
+wins in scalar-test count. **The decisive lens is always: a scalar-test-count win must beat a 4-wide-SIMD
+sequential baseline, so ~4 scalar tests ≈ 1 unit of baseline wall-clock, and gather is strictly worse than
+sequential.** Float precision (8-wide) is the one thing that could widen SIMD, but its Vector-API
+intrinsics deopt to boxing under concurrency at tess ≥ 3 (Phase 2) — so float is tess-2-only.
+
+**Pivot. Stop attacking the scan.** Remaining productive directions, re-ranked:
+1. **B1 — analytic per-atom SASA (tolerance).** Sidesteps sampling entirely — a fundamentally different
+   algorithm, not a scan refinement, so it escapes the dead well. Cheap load-immune gate FIRST: implement
+   only the analytic *area* (per-atom inclusion-exclusion of cap overlaps / Gauss-Bonnet arcs), compare its
+   per-atom + total area to sampled tess-2/3 over the corpus — is the gap within p2rank's tolerance
+   (total ≤ 1e-4 rel, per-atom ≤ 2%)? If yes, it's a candidate fast opt-in surface; if the gap is too big,
+   closed cheaply. (No fast impl needed for the gate, just a correct one.)
+2. **The BUILD, not the scan.** A6 (SIMD build) was the last real win and the build is the larger share at
+   tess 2 / 16t (bandwidth-bound). Re-profile where build time actually goes now (grid construction vs
+   distance pass vs neighbor materialization) before assuming it's tapped.
+3. **Generate new ideas** outside the scan/build dichotomy if 1–2 stall.
