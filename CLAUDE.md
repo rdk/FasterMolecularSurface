@@ -118,4 +118,6 @@ trusting the next round, not an afterthought.
 
 - Commit messages follow the existing `type: subject` style in the history (`docs:`, `ci:`,
   `ci+test:`, or `Add <Class>: <result>` for a new surface). Do **not** add `Co-Authored-By` trailers.
-- Do not run `git push`, `./gradlew publish`, or create releases without being asked — those are manual.
+- Do not run `./gradlew publish` or create releases without being asked — those are manual (and hard-blocked
+  in `.claude/settings.json`'s `deny` list). `git push` is permitted (no longer denied), but still push only
+  when asked or when the change is clearly ready to share — don't push speculative/WIP work unprompted.
