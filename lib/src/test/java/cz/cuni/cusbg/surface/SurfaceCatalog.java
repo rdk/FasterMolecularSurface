@@ -55,6 +55,7 @@ final class SurfaceCatalog {
             new Variant("DISTINCT_PACKED_V3", "DistinctPackedNumericalSurfaceV3", Fidelity.BIT_EXACT, DistinctPackedNumericalSurfaceV3::new),
             new Variant("DISTINCT_FASTER",    "DistinctFasterNumericalSurface",  Fidelity.BIT_EXACT, DistinctFasterNumericalSurface::new),
             new Variant("FLOAT",              "FloatNumericalSurface",           Fidelity.TOLERANCE, FloatNumericalSurface::new),
+            new Variant("FLOAT_V2",           "FloatNumericalSurfaceV2",         Fidelity.TOLERANCE, FloatNumericalSurfaceV2::new),
             // The DevSurfaceV1..V19 optimization ladder (available on demand: -p variantId=V1,V18,...).
             new Variant("V1",  "DevSurfaceV1Soa",          Fidelity.BIT_EXACT, DevSurfaceV1Soa::new),
             new Variant("V2",  "DevSurfaceV2Grid",         Fidelity.BIT_EXACT, DevSurfaceV2Grid::new),

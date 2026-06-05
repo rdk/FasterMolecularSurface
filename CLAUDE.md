@@ -56,7 +56,8 @@ side by side preserves the comparison; rewriting one invalidates its recorded be
 - The whole `DevSurfaceV1..V19` ladder (`DevSurfaceV*.java`), including the V15 negative-result branch.
 - The named production surfaces: `FasterNumericalSurface`, `PackedNumericalSurface`,
   `DistinctPackedNumericalSurface`, `DistinctPackedNumericalSurfaceV2`, `DistinctPackedNumericalSurfaceV3`
-  (the recommended default), `DistinctFasterNumericalSurface`, `FloatNumericalSurface`.
+  (the recommended default), `DistinctFasterNumericalSurface`, `FloatNumericalSurface`,
+  `FloatNumericalSurfaceV2` (the recommended approximate/float variant: float build + float scan).
 - The concrete strategy implementations they wire together once benchmarked (see the closure rule below).
 
 **Classification rule — use this, NOT "is it in the perf doc".** A concrete class is frozen iff it is

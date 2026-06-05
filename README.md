@@ -68,8 +68,13 @@ results via the scalar fallback, only slower.
   both wanted.
 - **`DistinctPackedNumericalSurfaceV2`** — the previous recommended surface; identical output to V3 with a
   scalar (non-vectorised) neighbour build. Use only to reproduce the exact pre-V3 timing baseline.
-- **`FloatNumericalSurface`** — single-precision-verdict variant of the recommended surface; ~1.05–1.14×
-  faster on GraalVM (neutral on HotSpot) at a small, tolerance-bounded accuracy cost. Not bit-exact.
+- **`FloatNumericalSurfaceV2`** — the fastest **approximate** surface (opt-in): both the occlusion scan's
+  verdict *and* the SIMD neighbour build's distance test are single precision, so it beats the bit-exact
+  default V3 at every tessellation level (≈1.3% at tess 2, ≈5% at tess 4 single-thread; more on GraalVM)
+  at a small, tolerance-bounded accuracy cost (total-area error ≤ 1e-4). Not bit-exact — use when an
+  approximate surface is acceptable. Prefer it over `FloatNumericalSurface`.
+- **`FloatNumericalSurface`** — the original single-precision-verdict variant (float *scan* only; the build
+  stays double). Superseded by `FloatNumericalSurfaceV2`; kept as the prior float baseline.
 - **`DistinctFasterNumericalSurface`** — the `FasterNumericalSurface`-based counterpart of the distinct
   surfaces: the same CDK-exact pipeline as `FasterNumericalSurface`, but emitting one point per distinct
   direction (areas bit-for-bit identical, point set deduplicated). Primarily a reference/cross-check for
